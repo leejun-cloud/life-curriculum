@@ -199,24 +199,27 @@ export default function TeamDashboard() {
     >
       <div className="min-h-screen bg-background">
         {/* Header */}
-        <header className="bg-card border-b border-border">
+        <header className="glass-effect border-b border-border/50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <Users className="w-5 h-5 text-primary-foreground" />
+                <div className="w-10 h-10 gradient-violet rounded-2xl flex items-center justify-center glow-violet">
+                  <Users className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-foreground">팀 대시보드</h1>
-                  <p className="text-sm text-muted-foreground">프론트엔드 개발팀</p>
+                  <h1 className="text-xl font-bold text-gradient-violet">Team Dashboard</h1>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-chart-2 rounded-full animate-pulse" />
+                    <p className="text-xs text-chart-2 font-semibold">SYNCED</p>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <Button variant="outline" size="sm" onClick={handleInviteMembers}>
+                <Button variant="outline" size="sm" className="border-primary/30 hover:bg-primary/10" onClick={handleInviteMembers}>
                   <UserPlus className="w-4 h-4 mr-2" />
                   팀원 초대
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleTeamSettings}>
+                <Button variant="outline" size="sm" className="border-primary/30 hover:bg-primary/10" onClick={handleTeamSettings}>
                   <Settings className="w-4 h-4 mr-2" />팀 설정
                 </Button>
               </div>
@@ -228,59 +231,63 @@ export default function TeamDashboard() {
           <div className="space-y-8">
             {/* Team Overview */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="bg-card border-border">
+              <Card className="bg-card/50 border-primary/20 hover:border-primary/40 transition-all">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-card-foreground">팀원 수</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium text-card-foreground">Total Members</CardTitle>
+                  <Users className="h-4 w-4 text-primary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-card-foreground">{teamStats.totalMembers}</div>
-                  <p className="text-xs text-muted-foreground">
-                    활성: {teamStats.activeMembers} (
-                    {Math.round((teamStats.activeMembers / teamStats.totalMembers) * 100)}%)
-                  </p>
-                  <Progress value={(teamStats.activeMembers / teamStats.totalMembers) * 100} className="mt-2" />
-                </CardContent>
-              </Card>
-
-              <Card className="bg-card border-border">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-card-foreground">평균 진도</CardTitle>
-                  <Target className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-card-foreground">{teamStats.averageProgress}%</div>
-                  <p className="text-xs text-muted-foreground">
-                    <TrendingUp className="inline w-3 h-3 mr-1" />
-                    전주 대비 +5%
-                  </p>
-                  <Progress value={teamStats.averageProgress} className="mt-2" />
-                </CardContent>
-              </Card>
-
-              <Card className="bg-card border-border">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-card-foreground">완료 과정</CardTitle>
-                  <BookOpen className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-card-foreground">
-                    {teamStats.completedCourses}/{teamStats.totalCourses}
+                  <div className="text-3xl font-bold text-foreground">{teamStats.totalMembers}</div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant="secondary" className="bg-chart-2/20 text-chart-2">
+                      +20%
+                    </Badge>
+                    <p className="text-xs text-muted-foreground">
+                      활성: {teamStats.activeMembers}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    완료율: {Math.round((teamStats.completedCourses / teamStats.totalCourses) * 100)}%
+                  <Progress value={(teamStats.activeMembers / teamStats.totalMembers) * 100} className="mt-3 h-2" />
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card/50 border-primary/20 hover:border-primary/40 transition-all">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-card-foreground">Avg. Progress</CardTitle>
+                  <Target className="h-4 w-4 text-chart-2" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-foreground">{teamStats.averageProgress}%</div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <TrendingUp className="w-3 h-3 text-chart-2" />
+                    <p className="text-xs text-chart-2 font-semibold">+1%</p>
+                  </div>
+                  <Progress value={teamStats.averageProgress} className="mt-3 h-2" />
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card/50 border-primary/20 hover:border-primary/40 transition-all">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-card-foreground">Completed</CardTitle>
+                  <BookOpen className="h-4 w-4 text-chart-3" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-foreground">
+                    {teamStats.completedCourses}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Courses
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-card border-border">
+              <Card className="bg-card/50 border-primary/20 hover:border-primary/40 transition-all">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-card-foreground">학습 시간</CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <Clock className="h-4 w-4 text-chart-4" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-card-foreground">{teamStats.totalLearningHours}시간</div>
-                  <p className="text-xs text-muted-foreground">
+                  <div className="text-3xl font-bold text-foreground">{teamStats.totalLearningHours}시간</div>
+                  <p className="text-xs text-muted-foreground mt-2">
                     평균: {Math.round(teamStats.totalLearningHours / teamStats.totalMembers)}시간/인
                   </p>
                 </CardContent>

@@ -224,19 +224,19 @@ export default function ExplorePage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-card/50 backdrop-blur-sm border-b border-border sticky top-0 z-50">
+      <header className="glass-effect border-b border-border/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4 h-16">
             <Link href="/">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="hover:bg-primary/10">
                 <ArrowLeft className="w-4 h-4" />
               </Button>
             </Link>
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-primary-foreground" />
+              <div className="w-10 h-10 gradient-violet rounded-2xl flex items-center justify-center glow-violet">
+                <BookOpen className="w-6 h-6 text-white" />
               </div>
-              <h1 className="text-xl font-bold text-foreground">커리큘럼 탐색</h1>
+              <h1 className="text-xl font-bold text-gradient-violet">Explore</h1>
             </div>
 
             {/* Search */}
@@ -244,24 +244,24 @@ export default function ExplorePage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
-                  placeholder="커리큘럼, 강사, 주제 검색..."
+                  placeholder="Find your next skill..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-card border-border"
+                  className="pl-10 bg-input border-border/50 focus:border-primary/50"
                 />
               </div>
             </div>
 
             {selectedItems.length > 0 && (
               <div className="flex items-center gap-2">
-                <Badge variant="secondary">{selectedItems.length}개 선택됨</Badge>
-                <Button size="sm" onClick={handleAddSelectedToMyCurriculum}>
+                <Badge variant="secondary" className="bg-primary/20 text-primary">{selectedItems.length}개 선택됨</Badge>
+                <Button size="sm" className="gradient-violet" onClick={handleAddSelectedToMyCurriculum}>
                   <Plus className="w-4 h-4 mr-1" />내 커리큘럼에 추가
                 </Button>
               </div>
             )}
 
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="border-primary/30 hover:bg-primary/10">
               <Filter className="w-4 h-4 mr-2" />
               필터
             </Button>
@@ -302,16 +302,19 @@ export default function ExplorePage() {
             </div>
 
             {/* Categories */}
-            <div className="flex gap-2 overflow-x-auto pb-2">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
               {categories.map((category) => (
                 <Button
                   key={category.name}
                   variant={category.name === selectedCategory ? "default" : "outline"}
                   size="sm"
-                  className="whitespace-nowrap"
+                  className={`whitespace-nowrap ${category.name === selectedCategory
+                    ? "gradient-violet"
+                    : "border-primary/30 hover:bg-primary/10"
+                    }`}
                   onClick={() => setSelectedCategory(category.name)}
                 >
-                  {category.name} {/* Removed count as it's 0 */}
+                  {category.name}
                 </Button>
               ))}
             </div>
@@ -342,33 +345,38 @@ export default function ExplorePage() {
                   {filteredContent.map((item: any) => (
                     <Card
                       key={item.id}
-                      className="bg-card border-border hover:shadow-lg transition-shadow group relative cursor-pointer"
+                      className="bg-card/50 border-primary/20 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10 transition-all group relative cursor-pointer overflow-hidden"
                       onClick={() => handlePreview(item.id, "curriculum")}
                     >
                       <div className="absolute top-3 left-3 z-10" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selectedItems.includes(item.id)}
                           onCheckedChange={() => handleSelectItem(item.id)}
-                          className="bg-white/80 border-2"
+                          className="bg-white/90 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                         />
                       </div>
 
                       <div className="relative">
-                        <img
-                          src={item.thumbnail || "/placeholder.svg"}
-                          alt={item.title}
-                          className="w-full h-48 object-cover rounded-t-lg"
-                        />
+                        <div
+                          className="w-full h-48 bg-gradient-to-br from-primary/80 to-secondary/60"
+                          style={{
+                            backgroundImage: item.thumbnail ? `url(${item.thumbnail})` : undefined,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                          }}
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent opacity-60" />
+                        </div>
                         <div className="absolute top-3 right-3 flex gap-2">
-                          <Badge variant="secondary" className="bg-black/60 text-white">
+                          <Badge variant="secondary" className="bg-primary/90 text-white font-semibold">
+                            {item.category || "TECH"}
+                          </Badge>
+                        </div>
+                        <div className="absolute bottom-3 left-3">
+                          <Badge variant="secondary" className="bg-black/60 text-white backdrop-blur-sm">
                             <BookOpenCheck className="w-3 h-3 mr-1" />
                             커리큘럼
                           </Badge>
-                          {item.category && (
-                            <Badge variant="secondary" className="bg-black/60 text-white">
-                              {item.category}
-                            </Badge>
-                          )}
                         </div>
                       </div>
 
