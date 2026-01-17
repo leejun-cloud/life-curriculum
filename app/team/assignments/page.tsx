@@ -369,6 +369,8 @@ export default function AssignmentsPage() {
               </Card>
             )}
           </div>
-        </RoleGuard>
-        )
+        </main>
+      </div>
+    </RoleGuard>
+  )
 }
