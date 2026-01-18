@@ -1,6 +1,7 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   /* Updated color tokens to match admin dashboard design brief with emerald color palette */
@@ -186,11 +187,6 @@
 
   body {
     @apply bg-background text-foreground font-sans;
-  }
-
-  /* Force dark mode by default */
-  html {
-    @apply dark;
   }
 }
 
