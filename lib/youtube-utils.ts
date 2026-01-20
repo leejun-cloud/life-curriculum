@@ -122,6 +122,28 @@ export function getYouTubeEmbedUrl(videoId: string): string {
 }
 
 /**
+ * Get YouTube thumbnail URL
+ * Returns the thumbnail image URL for a given YouTube video ID
+ * @param videoId - YouTube video ID
+ * @param quality - Thumbnail quality: "default" | "mq" | "hq" | "sd" | "maxres"
+ * @returns The full URL to the thumbnail image
+ */
+export function getYouTubeThumbnail(
+  videoId: string,
+  quality: "default" | "mq" | "hq" | "sd" | "maxres" = "hq"
+): string {
+  const qualityMap = {
+    default: "default",
+    mq: "mqdefault",
+    hq: "hqdefault",
+    sd: "sddefault",
+    maxres: "maxresdefault",
+  }
+
+  return `https://img.youtube.com/vi/${videoId}/${qualityMap[quality]}.jpg`
+}
+
+/**
  * Load YouTube IFrame API
  */
 export function loadYouTubeIframeAPI(): Promise<void> {

@@ -259,7 +259,7 @@
 
 ### 전체 구조
 
-```mermaid
+\`\`\`mermaid
 graph TB
     subgraph "Client Layer"
         A[Next.js App]
@@ -293,11 +293,11 @@ graph TB
     E --> H
     B --> K
     H --> J
-```
+\`\`\`
 
 ### 데이터 흐름
 
-```mermaid
+\`\`\`mermaid
 sequenceDiagram
     participant U as User
     participant C as Client
@@ -316,7 +316,7 @@ sequenceDiagram
     F-->>R: 실시간 데이터 스트림
     R-->>C: 상태 업데이트
     C-->>U: UI 렌더링
-```
+\`\`\`
 
 ---
 
@@ -344,7 +344,7 @@ sequenceDiagram
 
 #### Curriculum (커리큘럼)
 
-```typescript
+\`\`\`typescript
 interface Curriculum {
   id: string
   title: string
@@ -364,11 +364,11 @@ interface Curriculum {
   updatedAt: Date
   userId: string
 }
-```
+\`\`\`
 
 #### Content (콘텐츠)
 
-```typescript
+\`\`\`typescript
 interface Content {
   id: string
   videoId: string // YouTube Video ID
@@ -377,11 +377,11 @@ interface Content {
   completed: boolean
   order: number
 }
-```
+\`\`\`
 
 #### User (사용자)
 
-```typescript
+\`\`\`typescript
 interface User {
   id: string
   name: string
@@ -391,11 +391,11 @@ interface User {
   createdAt: Date
   lastActive: Date
 }
-```
+\`\`\`
 
 #### Team (팀)
 
-```typescript
+\`\`\`typescript
 interface Team {
   id: string
   name: string
@@ -405,11 +405,11 @@ interface Team {
   inviteCode: string
   createdAt: Date
 }
-```
+\`\`\`
 
 #### TeamMember (팀원)
 
-```typescript
+\`\`\`typescript
 interface TeamMember {
   id: string
   name: string
@@ -426,7 +426,7 @@ interface TeamMember {
   position?: string
   expertise?: string[]
 }
-```
+\`\`\`
 
 ---
 
@@ -434,7 +434,7 @@ interface TeamMember {
 
 ### 페이지 맵
 
-```
+\`\`\`
 /                           # 메인 대시보드
 ├── /login                  # 로그인
 ├── /profile                # 프로필
@@ -468,7 +468,7 @@ interface TeamMember {
     ├── /users              # 사용자 관리
     ├── /content            # 콘텐츠 승인
     └── /analytics          # 분석 보고서
-```
+\`\`\`
 
 ### 라우팅 구조
 
@@ -512,7 +512,7 @@ interface TeamMember {
 
 ### 로컬 개발 환경 설정
 
-```bash
+\`\`\`bash
 # 패키지 설치
 pnpm install
 
@@ -527,7 +527,7 @@ pnpm start
 
 # 린트 검사
 pnpm lint
-```
+\`\`\`
 
 ### Firebase 설정
 
@@ -535,14 +535,14 @@ pnpm lint
 2. Authentication, Firestore, Realtime Database 활성화
 3. 환경 변수 설정 (`.env.local`)
 
-```env
+\`\`\`env
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-```
+\`\`\`
 
 ---
 

@@ -24,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ko" className={dmSans.variable}>
+    <html lang="ko" className={`dark ${dmSans.variable}`}>
       <body className="font-sans antialiased">
         <AuthProvider>
           <RealtimeProvider>
