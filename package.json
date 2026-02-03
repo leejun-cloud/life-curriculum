@@ -36,7 +36,8 @@
     "react-dom": "19.0.0",
     "recharts": "^2.13.3",
     "tailwind-merge": "^2.5.4",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "ytsr": "^3.8.4"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",

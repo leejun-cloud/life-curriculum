@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,7 +25,7 @@ import {
   Hash,
 } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
 import { createCurriculum } from "@/lib/firebase-collections"
 
@@ -96,9 +96,11 @@ async function fetchYouTubeMetadata(url: string): Promise<Partial<ContentItem>> 
   }
 }
 
-export default function CreateCurriculumPage() {
+function CreateCurriculumContent() {
   const router = useRouter()
   const { user } = useAuth()
+  const searchParams = useSearchParams()
+  
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -113,6 +115,28 @@ export default function CreateCurriculumPage() {
   const [newContentUrl, setNewContentUrl] = useState("")
   const [isLoadingContent, setIsLoadingContent] = useState(false)
   const [contents, setContents] = useState<ContentItem[]>([])
+  
+  useEffect(() => {
+    if (searchParams.get('source') === 'explore') {
+      const tempVideos = localStorage.getItem("temp_curriculum_videos")
+      if (tempVideos) {
+        try {
+          const parsed = JSON.parse(tempVideos)
+          const mappedContents = parsed.map((v: any) => ({
+             id: v.id || Date.now().toString(),
+             title: v.title,
+             url: v.url || `https://www.youtube.com/watch?v=${v.id}`,
+             duration: v.duration || "15분",
+             thumbnail: v.thumbnail || "/video-thumbnail.png",
+             type: "video"
+          }))
+          setContents(mappedContents)
+        } catch (e) {
+          console.error("Failed to parse temp videos", e)
+        }
+      }
+    }
+  }, [searchParams])
 
   const handleHashtagInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
@@ -173,12 +197,12 @@ export default function CreateCurriculumPage() {
     setContents(contents.filter((content) => content.id !== id))
   }
 
-  const moveContent = (fromIndex: number, toIndex: number) => {
-    const newContents = [...contents]
-    const [movedContent] = newContents.splice(fromIndex, 1)
-    newContents.splice(toIndex, 0, movedContent)
-    setContents(newContents)
-  }
+//   const moveContent = (fromIndex: number, toIndex: number) => {
+//     const newContents = [...contents]
+//     const [movedContent] = newContents.splice(fromIndex, 1)
+//     newContents.splice(toIndex, 0, movedContent)
+//     setContents(newContents)
+//   }
 
   const saveCurriculum = async () => {
     console.log("[v0] Current user state:", user)
@@ -516,5 +540,13 @@ export default function CreateCurriculumPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function CreateCurriculumPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <CreateCurriculumContent />
+    </Suspense>
   )
 }
