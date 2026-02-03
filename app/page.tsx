@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/components/auth-provider"
+import { useRealtime } from "@/components/realtime-provider"
 import { motion } from "framer-motion"
 
 // Mock data
@@ -50,16 +51,8 @@ const LIVE_ACTIVITIES = [
 export default function HomePage() {
   const { user } = useAuth()
   const router = useRouter()
+  const { curriculums } = useRealtime() // Use real data
   const [searchQuery, setSearchQuery] = useState("")
-  const [isScrolled, setIsScrolled] = useState(false)
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50)
-    }
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -68,15 +61,21 @@ export default function HomePage() {
     }
   }
 
+  // Initial animation
+  const [isMounted, setIsMounted] = useState(false)
+  useEffect(() => setIsMounted(true), [])
+
+  if (!isMounted) return null
+
   return (
     <div className="min-h-screen bg-background">
       {/* Search-Centric Hero Section */}
       <section className="relative pt-20 pb-20 px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center overflow-hidden">
         
-        {/* Abstract Background Elements */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-b from-primary/5 to-transparent -z-10" />
-        <div className="absolute top-20 right-10 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl -z-10 animate-pulse" />
-        <div className="absolute top-40 left-10 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl -z-10 animate-pulse" style={{ animationDelay: "1s" }} />
+        {/* Abstract Background Elements - Added pointer-events-none */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-b from-primary/5 to-transparent -z-10 pointer-events-none" />
+        <div className="absolute top-20 right-10 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl -z-10 animate-pulse pointer-events-none" />
+        <div className="absolute top-40 left-10 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl -z-10 animate-pulse pointer-events-none" style={{ animationDelay: "1s" }} />
 
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -95,11 +94,12 @@ export default function HomePage() {
 
           {/* Large Search Bar */}
           <form onSubmit={handleSearch} className="relative max-w-2xl mx-auto w-full group">
+             {/* Background glow - pointer-events-none */}
             <div className={`
-              absolute inset-0 bg-gradient-to-r from-violet-500 to-indigo-500 rounded-2xl opacity-20 blur-lg transition-opacity duration-300
+              absolute inset-0 bg-gradient-to-r from-violet-500 to-indigo-500 rounded-2xl opacity-20 blur-lg transition-opacity duration-300 pointer-events-none
               ${searchQuery ? "opacity-40" : "group-hover:opacity-30"}
             `} />
-            <div className="relative flex items-center bg-card border border-border/50 rounded-2xl shadow-xl overflow-hidden p-2">
+            <div className="relative flex items-center bg-card border border-border/50 rounded-2xl shadow-xl overflow-hidden p-2 z-10">
               <Search className="w-6 h-6 text-muted-foreground ml-4" />
               <Input 
                 value={searchQuery}
@@ -122,7 +122,7 @@ export default function HomePage() {
                 variant="outline" 
                 size="sm" 
                 className="rounded-full bg-background/50 hover:bg-muted"
-                onClick={() => setSearchQuery(topic)}
+                onClick={() => router.push(`/explore?q=${topic}`)}
               >
                 {topic}
               </Button>
@@ -146,36 +146,50 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-             {/* Simulating active curriculums */}
-             <Card className="bg-card/50 border-primary/20 hover:border-primary/40 transition-all cursor-pointer group">
-               <CardContent className="p-6 flex gap-4 items-center">
-                 <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
-                   <PlayCircle className="w-8 h-8 text-primary" />
-                 </div>
-                 <div className="flex-1">
-                   <h3 className="font-semibold group-hover:text-primary transition-colors">React 완벽 가이드</h3>
-                   <div className="flex items-center justify-between mt-2 text-sm text-muted-foreground">
-                     <span>진행률 45%</span>
-                     <span>20분 전</span>
+          {curriculums.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+               {curriculums.slice(0, 2).map((curriculum: any) => (
+                 <Card key={curriculum.id} className="bg-card/50 border-primary/20 hover:border-primary/40 transition-all cursor-pointer group" onClick={() => router.push(`/curriculum/${curriculum.id}`)}>
+                   <CardContent className="p-6 flex gap-4 items-center">
+                     <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+                        {curriculum.thumbnail ? (
+                             <img src={curriculum.thumbnail} alt={curriculum.title} className="w-full h-full object-cover rounded-xl" />
+                        ) : (
+                             <PlayCircle className="w-8 h-8 text-primary" />
+                        )}
+                     </div>
+                     <div className="flex-1 min-w-0">
+                       <h3 className="font-semibold truncate group-hover:text-primary transition-colors">{curriculum.title}</h3>
+                       <div className="flex items-center justify-between mt-2 text-sm text-muted-foreground">
+                         <span>진행률 {curriculum.progress || 0}%</span>
+                       </div>
+                       <div className="h-1.5 w-full bg-muted rounded-full mt-2 overflow-hidden">
+                         <div className="h-full bg-primary" style={{ width: `${curriculum.progress || 0}%` }} />
+                       </div>
+                     </div>
+                   </CardContent>
+                 </Card>
+               ))}
+               
+               {/* "Create New" Recommendation Card */}
+               <Card className="bg-muted/30 border-dashed border-border hover:border-primary/40 transition-all cursor-pointer" onClick={() => router.push('/curriculum/create')}>
+                 <CardContent className="p-6 flex flex-col items-center justify-center text-center h-full min-h-[120px]">
+                   <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
+                     <TrendingUp className="w-5 h-5 text-muted-foreground" />
                    </div>
-                   <div className="h-1.5 w-full bg-muted rounded-full mt-2 overflow-hidden">
-                     <div className="h-full bg-primary w-[45%]" />
-                   </div>
-                 </div>
-               </CardContent>
-             </Card>
-             
-             {/* Recommendation Card */}
-             <Card className="bg-muted/30 border-dashed border-border hover:border-primary/40 transition-all cursor-pointer">
-               <CardContent className="p-6 flex flex-col items-center justify-center text-center h-full min-h-[120px]">
-                 <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
-                   <TrendingUp className="w-5 h-5 text-muted-foreground" />
-                 </div>
-                 <p className="font-medium text-sm">요즘 뜨는 'AI 에이전트' 배워보기</p>
-               </CardContent>
-             </Card>
-          </div>
+                   <p className="font-medium text-sm">새로운 커리큘럼 만들기</p>
+                 </CardContent>
+               </Card>
+            </div>
+          ) : (
+            <div className="text-center py-10 bg-card/30 rounded-2xl border border-dashed border-border">
+                <p className="text-muted-foreground mb-4">아직 학습 중인 커리큘럼이 없습니다.</p>
+                <div className="flex justify-center gap-4">
+                    <Button variant="outline" onClick={() => router.push('/explore?q=React')}>React 배워보기</Button>
+                    <Button variant="outline" onClick={() => router.push('/explore?q=영어')}>영어 공부하기</Button>
+                </div>
+            </div>
+          )}
         </section>
       )}
 
