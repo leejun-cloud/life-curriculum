@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import ytsr from 'ytsr';
+import YouTube from 'youtube-sr';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
   // Inject level into query
   let finalQuery = query;
-  if (level) {
+  if (level && level !== 'all') {
     switch (level) {
       case 'wangchobo':
         finalQuery += ' 왕초보 기초';
@@ -33,38 +33,32 @@ export async function GET(request: Request) {
   }
 
   try {
-    const filters = await ytsr.getFilters(finalQuery);
-    const filterVideo = filters.get('Type')?.get('Video');
-    const searchUrl = filterVideo?.url || finalQuery;
-
-    const results = await ytsr(searchUrl, { limit: 20 });
+    // youtube-sr is often more stable for simple searching
+    const videos = await YouTube.search(finalQuery, { limit: 20 });
     
-    // Transform items
-    const videos = results.items
-      .filter((item): item is ytsr.Video => item.type === 'video')
-      .map(item => {
-        // Simple recommendation score: (views / 10000)
-        // Ideally we would parse view string "1.2M views" -> number, but ytsr gives text.
-        // For MVP we just pass raw data.
-        
+    // Transform items to match our schema
+    const results = videos.map(item => {
         return {
           id: item.id,
           title: item.title,
-          thumbnail: item.bestThumbnail?.url,
+          thumbnail: item.thumbnail?.url || item.thumbnail?.url, // youtube-sr structure
           url: item.url,
-          duration: item.duration,
-          views: item.views, // e.g. "1.2M views" (number in newer ytsr versions? need to check)
+          duration: item.durationFormatted,
+          views: item.views, 
           channel: {
-             name: item.author?.name,
-             avatar: item.author?.bestAvatar?.url
+             name: item.channel?.name,
+             avatar: item.channel?.icon?.url
           },
           uploadedAt: item.uploadedAt 
         };
       });
 
-    return NextResponse.json({ videos });
+    return NextResponse.json({ videos: results });
   } catch (error) {
     console.error('YouTube Search Error:', error);
+    // Return mock data fallback if real search fails during demo/dev to avoid broken UI
+    // Or strictly error out.
+    // Let's enable a fallback for "demo" purposes if critical, but for now just error.
     return NextResponse.json({ error: 'Failed to fetch videos' }, { status: 500 });
   }
 }
