@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { DM_Sans } from "next/font/google"
 import "./globals.css"
 import { AdminNav } from "@/components/admin-nav"
+import { SiteHeader } from "@/components/site-header"
 import { AuthProvider } from "@/components/auth-provider"
 import { RealtimeProvider } from "@/components/realtime-provider"
 
@@ -29,6 +30,7 @@ export default function RootLayout({
         <AuthProvider>
           <RealtimeProvider>
             <AdminNav />
+            <SiteHeader />
             {children}
           </RealtimeProvider>
         </AuthProvider>

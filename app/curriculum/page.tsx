@@ -23,6 +23,7 @@ import {
   Download,
 } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRealtime } from "@/components/realtime-provider"
 import { deleteCurriculum } from "@/lib/firebase-collections"
 
@@ -196,11 +197,13 @@ export default function CurriculumPage() {
               key={curriculum.id}
               className="bg-card border-border hover:shadow-lg transition-shadow cursor-pointer group"
             >
-              <div className="relative">
-                <img
+              <div className="relative h-48">
+                <Image
                   src={curriculum.thumbnail || "/placeholder.svg"}
                   alt={curriculum.title}
-                  className="w-full h-48 object-cover rounded-t-lg"
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="object-cover rounded-t-lg"
                 />
                 <div className="absolute top-3 right-3">
                   <Button variant="ghost" size="sm" className="bg-black/20 hover:bg-black/40 text-white">

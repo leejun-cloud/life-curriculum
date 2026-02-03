@@ -20,6 +20,7 @@ import {
   BookOpen,
 } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function CommunityPage() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -156,9 +157,11 @@ export default function CommunityPage() {
                                     className="cursor-pointer hover:opacity-80 transition-opacity relative"
                                     onClick={() => console.log("Curriculum clicked")}
                                   >
-                                    <img
+                                    <Image
                                       src={post.curriculum.thumbnail || "/placeholder.svg"}
                                       alt={post.curriculum.title}
+                                      width={96}
+                                      height={72}
                                       className="w-24 h-18 object-cover rounded-lg"
                                     />
                                     <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
@@ -202,9 +205,11 @@ export default function CommunityPage() {
                             <Card className="bg-muted/50 border-border">
                               <CardContent className="p-4">
                                 <div className="flex gap-4">
-                                  <img
+                                  <Image
                                     src={post.achievement.image || "/placeholder.svg"}
                                     alt={post.achievement.title}
+                                    width={96}
+                                    height={72}
                                     className="w-24 h-18 object-cover rounded-lg"
                                   />
                                   <div className="flex-1">
