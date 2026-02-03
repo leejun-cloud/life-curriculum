@@ -153,12 +153,13 @@ export async function setUserRole(userId: string, role: UserRole): Promise<void>
   }
 }
 
-export async function createTeam(name: string, leaderId: string): Promise<Team> {
+export async function createTeam(name: string, leaderId: string, additionalData?: any): Promise<Team> {
   try {
     const teamData = {
       name,
       leaderId,
       memberIds: [leaderId],
+      ...additionalData, // Merge additional data (e.g. curriculumId, description)
     }
 
     const teamRef = await createTeamInFirestore(teamData)

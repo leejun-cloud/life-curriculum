@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,7 +12,7 @@ import { RoleGuard } from "@/components/role-guard"
 import { createTeam, getCurrentUser } from "@/lib/auth"
 import { ArrowLeft, Users, Settings, Lock, Mail, Copy, Check } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 const teamCategories = [
   "개발팀",
@@ -26,8 +26,9 @@ const teamCategories = [
   "기타",
 ]
 
-export default function CreateTeam() {
+function CreateTeamContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [teamName, setTeamName] = useState("")
   const [description, setDescription] = useState("")
   const [category, setCategory] = useState("")
@@ -37,6 +38,21 @@ export default function CreateTeam() {
   const [autoApprove, setAutoApprove] = useState(true)
   const [allowMemberInvite, setAllowMemberInvite] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [curriculumId, setCurriculumId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const cid = searchParams.get("curriculumId")
+    const cTitle = searchParams.get("title")
+
+    if (cid) {
+      setCurriculumId(cid)
+      if (cTitle) {
+        setTeamName(`${cTitle} 스터디`)
+        setDescription(`'${cTitle}' 커리큘럼을 같이 공부하는 모임입니다.`)
+      }
+      setCategory("스터디그룹")
+    }
+  }, [searchParams])
 
   const generateInviteCode = () => {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase()
@@ -51,16 +67,31 @@ export default function CreateTeam() {
     }
   }
 
-  const handleCreateTeam = () => {
+  const handleCreateTeam = async () => {
     if (!teamName.trim()) {
       alert("팀 이름을 입력해주세요.")
       return
     }
 
-    const currentUser = getCurrentUser()
-    const team = createTeam(teamName, currentUser.id)
+    const currentUser = await getCurrentUser()
+    if (!currentUser) {
+        alert("로그인이 필요합니다.")
+        return
+    }
 
-    // 팀 설정 저장
+    // Pass additional data including curriculumId
+    const team = await createTeam(teamName, currentUser.id, {
+        description,
+        category,
+        isPrivate,
+        maxMembers: Number.parseInt(maxMembers),
+        inviteCode,
+        autoApprove,
+        allowMemberInvite,
+        curriculumId, // Link existing curriculum
+    })
+
+    // 팀 설정 저장 (LocalStorage backup - maintaining existing logic)
     const teamSettings = {
       teamId: team.id,
       description,
@@ -70,23 +101,19 @@ export default function CreateTeam() {
       inviteCode,
       autoApprove,
       allowMemberInvite,
+      curriculumId,
     }
 
     localStorage.setItem(`team_settings_${team.id}`, JSON.stringify(teamSettings))
 
     console.log("[v0] Team created:", team)
-    console.log("[v0] Team settings:", teamSettings)
-
+    
     alert("팀이 성공적으로 생성되었습니다!")
     router.push("/team/dashboard")
   }
 
   return (
-    <RoleGuard
-      allowedRoles={["user", "team_leader", "admin"]}
-      fallback={<div className="p-8 text-center text-muted-foreground">로그인이 필요합니다.</div>}
-    >
-      <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
         {/* Header */}
         <header className="bg-card border-b border-border">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -108,6 +135,13 @@ export default function CreateTeam() {
 
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="space-y-8">
+            {curriculumId && (
+                <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg flex items-center gap-3 text-primary">
+                    <Check className="w-5 h-5" />
+                    <p className="font-medium">선택된 커리큘럼으로 스터디 팀을 생성합니다.</p>
+                </div>
+            )}
+            
             {/* Basic Information */}
             <Card className="bg-card border-border">
               <CardHeader>
@@ -261,7 +295,19 @@ export default function CreateTeam() {
             </div>
           </div>
         </main>
-      </div>
+    </div>
+  )
+}
+
+export default function CreateTeam() {
+  return (
+    <RoleGuard
+      allowedRoles={["user", "team_leader", "admin"]}
+      fallback={<div className="p-8 text-center text-muted-foreground">로그인이 필요합니다.</div>}
+    >
+        <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
+            <CreateTeamContent />
+        </Suspense>
     </RoleGuard>
   )
 }

@@ -25,7 +25,8 @@ import {
 import Link from "next/link"
 import Image from "next/image"
 import { useRealtime } from "@/components/realtime-provider"
-import { deleteCurriculum } from "@/lib/firebase-collections"
+import { deleteCurriculum, incrementCurriculumViews } from "@/lib/firebase-collections"
+import { getYouTubeThumbnail } from "@/lib/youtube-utils"
 
 const categories = ["전체", "기술", "비즈니스", "건강", "취미", "인문학", "언어"]
 
@@ -36,6 +37,7 @@ export default function CurriculumPage() {
   const [showFilters, setShowFilters] = useState(false)
   const { curriculums: firebaseCurriculums } = useRealtime()
   const [importedCurriculums, setImportedCurriculums] = useState<any[]>([])
+  const [visibleCount, setVisibleCount] = useState(9) // Pagination state
 
   useEffect(() => {
     const imported = JSON.parse(localStorage.getItem("importedCurriculums") || "[]")
@@ -55,13 +57,22 @@ export default function CurriculumPage() {
       estimatedHours: Number.parseInt(imported.duration) || 15,
       isPublic: false,
       likes: 0,
+      views: imported.views || 0,
       students: 1,
-      thumbnail: imported.thumbnail || "/placeholder.svg",
+      thumbnail: imported.thumbnail || (imported.contents?.[0]?.videoId ? getYouTubeThumbnail(imported.contents[0].videoId) : "/placeholder.svg"),
       isImported: true,
       originalId: imported.id,
+      contents: imported.contents || []
     }))
 
-    return [...firebaseCurriculums, ...converted]
+    // Process firebase curriculums to ensure thumbnail fallback
+    const processedFirebase = firebaseCurriculums.map((c: any) => ({
+        ...c,
+        views: c.views || 0, // Ensure views exist
+        thumbnail: c.thumbnail || (c.contents?.[0]?.videoId ? getYouTubeThumbnail(c.contents[0].videoId) : "/placeholder.svg")
+    }))
+
+    return [...processedFirebase, ...converted]
   }, [firebaseCurriculums, importedCurriculums])
 
   const filteredCurriculums = useMemo(() => {
@@ -75,9 +86,19 @@ export default function CurriculumPage() {
     })
   }, [searchQuery, selectedCategory, allCurriculums])
 
+  // Pagination Logic
+  const visibleCurriculums = useMemo(() => {
+     return filteredCurriculums.slice(0, visibleCount)
+  }, [filteredCurriculums, visibleCount])
+
+  const handleLoadMore = () => {
+     setVisibleCount(prev => prev + 9)
+  }
+
   const handleCategoryChange = (category: string) => {
     console.log("[v0] Category changed to:", category)
     setSelectedCategory(category)
+    setVisibleCount(9) // Reset pagination on filter change
   }
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,8 +106,18 @@ export default function CurriculumPage() {
     setSearchQuery(e.target.value)
   }
 
-  const handleContinueLearning = (curriculumId: string) => {
+  const handleContinueLearning = async (curriculumId: string) => {
     console.log("[v0] Continue learning curriculum:", curriculumId)
+    
+    // Increment views for non-imported curriculums
+    if (!curriculumId.startsWith("imported-")) {
+        try {
+            await incrementCurriculumViews(curriculumId)
+        } catch (e) {
+            console.error("Failed to increment views", e)
+        }
+    }
+    
     router.push(`/curriculum/${curriculumId}`)
   }
 
@@ -192,30 +223,31 @@ export default function CurriculumPage() {
 
         {/* Curriculum Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCurriculums.map((curriculum) => (
+          {visibleCurriculums.map((curriculum) => (
             <Card
               key={curriculum.id}
-              className="bg-card border-border hover:shadow-lg transition-shadow cursor-pointer group"
+              className="bg-card border-border hover:shadow-lg transition-shadow cursor-pointer group flex flex-col h-full"
+              onClick={() => handleContinueLearning(curriculum.id)}
             >
-              <div className="relative h-48">
+              <div className="relative h-48 shrink-0 bg-muted">
                 <Image
-                  src={curriculum.thumbnail || "/placeholder.svg"}
+                  src={curriculum.thumbnail}
                   alt={curriculum.title}
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className="object-cover rounded-t-lg"
                 />
                 <div className="absolute top-3 right-3">
-                  <Button variant="ghost" size="sm" className="bg-black/20 hover:bg-black/40 text-white">
+                  <Button variant="ghost" size="sm" className="bg-black/20 hover:bg-black/40 text-white h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); /* Menu logic */ }}>
                     <MoreVertical className="w-4 h-4" />
                   </Button>
                 </div>
                 <div className="absolute bottom-3 left-3 flex gap-2">
-                  <Badge variant="secondary" className="bg-black/60 text-white">
+                  <Badge variant="secondary" className="bg-black/60 text-white backdrop-blur-sm">
                     {curriculum.category}
                   </Badge>
                   {curriculum.isImported && (
-                    <Badge variant="secondary" className="bg-primary/80 text-white">
+                    <Badge variant="secondary" className="bg-primary/80 text-white backdrop-blur-sm">
                       <Download className="w-3 h-3 mr-1" />
                       가져옴
                     </Badge>
@@ -223,72 +255,66 @@ export default function CurriculumPage() {
                 </div>
               </div>
 
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <Link href={`/curriculum/${curriculum.id}`}>
-                      <h3 className="font-semibold text-card-foreground mb-1 group-hover:text-primary transition-colors">
-                        {curriculum.title}
-                      </h3>
-                    </Link>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{curriculum.description}</p>
-                  </div>
+              <CardContent className="p-5 flex flex-col flex-1">
+                <div className="flex-1 mb-4">
+                    <h3 className="font-bold text-lg text-card-foreground mb-2 group-hover:text-primary transition-colors line-clamp-1">
+                      {curriculum.title}
+                    </h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">{curriculum.description || "설명이 없습니다."}</p>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">진행률</span>
-                    <span className="font-medium text-card-foreground">
-                      {curriculum.completedLessons}/{curriculum.totalLessons}
-                    </span>
-                  </div>
-                  <Progress value={curriculum.progress} className="h-2" />
-
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      <span>{curriculum.estimatedHours}시간 남음</span>
-                    </div>
-                    <Badge variant="outline" size="sm">
-                      {curriculum.level}
-                    </Badge>
-                  </div>
-
-                  {curriculum.isPublic && (
-                    <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t border-border">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4" />
-                        <span>{curriculum.likes}</span>
+                <div className="space-y-4 mt-auto">
+                    {/* Progress */}
+                   <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground font-medium">진행률</span>
+                        <span className="text-primary font-bold">
+                          {Math.round(curriculum.progress)}%
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        <span>{curriculum.students}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                      <Progress value={curriculum.progress} className="h-1.5" />
+                   </div>
 
-                <div className="flex gap-2 mt-4">
-                  <Button className="flex-1" size="sm" onClick={() => handleContinueLearning(curriculum.id)}>
-                    <Play className="w-4 h-4 mr-2" />
-                    계속 학습
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleEditCurriculum(curriculum.id)}>
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDeleteCurriculum(curriculum.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border">
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
+                            <Play className="w-3.5 h-3.5" />
+                            <span>{curriculum.views}회</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>{curriculum.estimatedHours}시간</span>
+                        </div>
+                    </div>
+                    {/* Actions - visible on hover or always? Let's keep distinct buttons */}
+                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEditCurriculum(curriculum.id)}>
+                            <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDeleteCurriculum(curriculum.id)}>
+                            <Trash2 className="w-4 h-4" />
+                        </Button>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
+
+        {/* Load More Button */}
+        {visibleCount < filteredCurriculums.length && (
+            <div className="mt-8 text-center animate-in fade-in slide-in-from-bottom-4">
+                <Button 
+                    variant="outline" 
+                    size="lg" 
+                    onClick={handleLoadMore}
+                    className="min-w-[150px]"
+                >
+                    더 보기 <Plus className="w-4 h-4 ml-2" />
+                </Button>
+            </div>
+        )}
 
         {/* Empty State */}
         {filteredCurriculums.length === 0 && (

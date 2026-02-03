@@ -13,6 +13,7 @@ import {
   limit,
   onSnapshot,
   serverTimestamp,
+  increment,
 } from "firebase/firestore"
 import { db } from "./firebase"
 import { getYouTubeThumbnail } from "./youtube-utils"
@@ -113,6 +114,43 @@ export const getCurriculum = async (curriculumId: string) => {
   const curriculumRef = doc(db, "curriculums", curriculumId)
   const curriculumSnap = await getDoc(curriculumRef)
   return curriculumSnap.exists() ? { id: curriculumSnap.id, ...curriculumSnap.data() } : null
+}
+
+export const incrementCurriculumViews = async (curriculumId: string) => {
+  const curriculumRef = doc(db, "curriculums", curriculumId)
+  await updateDoc(curriculumRef, {
+    views: increment(1)
+  })
+}
+
+// Fork operations
+export const forkCurriculum = async (originalCurriculumId: string, newOwnerId: string) => {
+  const originalRef = doc(db, "curriculums", originalCurriculumId)
+  const originalSnap = await getDoc(originalRef)
+
+  if (!originalSnap.exists()) {
+    throw new Error("Curriculum not found")
+  }
+
+  const originalData = originalSnap.data()
+  
+  // Create new curriculum data
+  const newCurriculumData = {
+    ...originalData,
+    title: `${originalData.title} (복사본)`, // Add (Copy) or similar if desired, or keep logic simple
+    createdBy: newOwnerId,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    likes: 0,
+    views: 0,
+    students: 1, // The forker is the first student
+    isPublic: false, // Reset to private by default
+    forkedFrom: originalCurriculumId
+  }
+
+  // Remove fields that should not be copied if any (e.g. implementation details)
+  
+  return await addDoc(getCurriculumsCollection(), newCurriculumData)
 }
 
 // Team operations

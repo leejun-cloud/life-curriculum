@@ -28,11 +28,13 @@ import {
   Square,
   Copy,
   Loader2,
+  Search, // Added Search
 } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
 import { getCurriculum } from "@/lib/firebase-collections"
 import { extractYouTubeId } from "@/lib/youtube-utils"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs" // Added Tabs
 
 export default function CurriculumDetailPage({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams()
@@ -64,6 +66,59 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
   const [selectedVideos, setSelectedVideos] = useState<number[]>([])
   const [showCurriculumSelector, setShowCurriculumSelector] = useState(false)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
+
+  // Search State
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+
+  const handleSearch = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (!searchQuery.trim()) return
+
+    setIsSearching(true)
+    try {
+      const response = await fetch(`/api/youtube/search?q=${encodeURIComponent(searchQuery)}`)
+      const data = await response.json()
+      if (data.videos) {
+        setSearchResults(data.videos)
+      }
+    } catch (error) {
+      console.error("Search failed:", error)
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  const addVideoFromSearch = async (video: any) => {
+    const newContent = {
+      id: contents.length > 0 ? Math.max(...contents.map((c) => c.id)) + 1 : 1,
+      title: video.title,
+      duration: video.duration, 
+      completed: false,
+      videoId: video.id,
+      url: video.url,
+      notes: "",
+      thumbnail: video.thumbnail,
+      description: video.title, 
+      author: video.channel.name,
+    }
+
+    const updatedContents = [...contents, newContent]
+    setContents(updatedContents)
+    
+     try {
+        const { updateCurriculum } = await import("@/lib/firebase-collections")
+        await updateCurriculum(params.id, {
+          contents: updatedContents,
+          updatedAt: new Date().toISOString(),
+        })
+      } catch (firebaseError) {
+        console.error("Error saving to Firebase:", firebaseError)
+      }
+
+    alert(`✅ 추가됨: ${video.title}`)
+  }
 
   const playerRef = useRef<any>(null)
   const playerContainerRef = useRef<HTMLDivElement>(null)
@@ -715,7 +770,7 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card/50 backdrop-blur-sm border-b border-border sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4 h-16">
             <Link href={isFromCommunity ? "/community" : "/curriculum"}>
               <Button variant="ghost" size="sm">
@@ -726,22 +781,26 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <BookOpen className="w-5 h-5 text-primary-foreground" />
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-foreground">
+              <div className="flex flex-col">
+                <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
                   {curriculum.title}
                   {isFromCommunity && (
-                    <Badge variant="secondary" className="ml-2 text-xs">
+                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
                       커뮤니티
                     </Badge>
                   )}
                 </h1>
-                <p className="text-sm text-muted-foreground">
-                  {contents.filter((c) => c.completed).length}/{contents.length} 완료
+                <p className="text-xs text-muted-foreground">
+                  {contents.filter((c) => c.completed).length}/{contents.length} 강의 완료
                 </p>
               </div>
             </div>
-            <div className="ml-auto flex items-center gap-4">
-              <Progress value={curriculum.progress || 0} className="w-32" />
+            <div className="ml-auto hidden md:flex items-center gap-4">
+               {/* Progress Bar in Header - Optional or Simplified */}
+              <div className="flex items-center gap-2">
+                 <span className="text-xs text-muted-foreground">{Math.round(curriculum.progress || 0)}%</span>
+                 <Progress value={curriculum.progress || 0} className="w-24 h-2" />
+              </div>
 
               {isSelectionMode && selectedVideos.length > 0 && (
                 <div className="flex items-center gap-2">
@@ -752,399 +811,293 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
                   </Button>
                 </div>
               )}
-
-              {isFromCommunity ? (
-                <>
-                  <Button variant={isPreviewMode ? "default" : "outline"} size="sm" onClick={togglePreviewMode}>
-                    <Play className="w-4 h-4 mr-2" />
-                    재생해보기
-                  </Button>
-
-                  <Button variant={isSelectionMode ? "default" : "outline"} size="sm" onClick={toggleSelectionMode}>
-                    {isSelectionMode ? (
-                      <>
-                        <CheckSquare className="w-4 h-4 mr-2" />
-                        선택 완료
-                      </>
-                    ) : (
-                      <>
-                        <Square className="w-4 h-4 mr-2" />
-                        선택하기
-                      </>
-                    )}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="default" size="sm" onClick={continueFromLastPosition}>
-                    <Play className="w-4 h-4 mr-2" />
-                    계속 학습
-                  </Button>
-
-                  <Button variant={isSelectionMode ? "default" : "outline"} size="sm" onClick={toggleSelectionMode}>
-                    {isSelectionMode ? (
-                      <>
-                        <CheckSquare className="w-4 h-4 mr-2" />
-                        선택 완료
-                      </>
-                    ) : (
-                      <>
-                        <Square className="w-4 h-4 mr-2" />
-                        비디오 선택
-                      </>
-                    )}
-                  </Button>
-
-                  <Button
-                    variant={isEditing ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setIsEditing(!isEditing)}
-                  >
-                    {isEditing ? (
-                      <>
-                        <Save className="w-4 h-4 mr-2" />
-                        완료
-                      </>
-                    ) : (
-                      <>
-                        <Edit3 className="w-4 h-4 mr-2" />
-                        편집
-                      </>
-                    )}
-                  </Button>
-                </>
-              )}
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-8">
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-card-foreground">강의 목록</CardTitle>
-                <div className="flex items-center gap-2">
-                  {isSelectionMode && (
-                    <Button size="sm" variant="outline" onClick={selectAllVideos}>
-                      <CheckSquare className="w-4 h-4 mr-2" />
-                      {selectedVideos.length === contents.length ? "전체 해제" : "전체 선택"}
-                    </Button>
-                  )}
-
-                  {!isFromCommunity && (
-                    <Button
-                      size="sm"
-                      variant={showAddForm ? "secondary" : "default"}
-                      onClick={() => setShowAddForm(!showAddForm)}
-                      className="transition-all duration-200 hover:scale-105"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      {showAddForm ? "취소" : "영상 추가"}
-                    </Button>
-                  )}
-
-                  {(isEditing || isSelectionMode) && (
-                    <Badge variant="outline" className="text-xs">
-                      {isSelectionMode ? "선택 모드" : "편집 모드"}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!isFromCommunity && showAddForm && (
-                <Card className="bg-muted/50 border-dashed border-2 border-primary/30">
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Plus className="w-4 h-4 text-primary" />
-                      <h4 className="font-medium text-sm text-primary">새 YouTube 영상 추가</h4>
-                    </div>
-                    <div className="space-y-3">
-                      <div>
-                        <Input
-                          placeholder="YouTube URL을 입력하세요 (예: https://www.youtube.com/watch?v=dQw4w9WgXcQ)"
-                          value={newVideoUrl}
-                          onChange={(e) => setNewVideoUrl(e.target.value)}
-                          disabled={isLoadingMetadata}
-                          className="font-mono text-sm focus:ring-2 focus:ring-primary/20"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          💡 지원 형식: youtube.com/watch?v=ID, youtu.be/ID
-                        </p>
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          
+          {/* Left Column: Player & Active Content */}
+          <div className="lg:col-span-2 space-y-6 order-1">
+             {(!isSelectionMode || (isFromCommunity && isPreviewMode)) && currentContent ? (
+                <div className="bg-card border border-border/50 rounded-xl overflow-hidden shadow-sm sticky top-20 z-10">
+                   {/* Player Container */}
+                   <div ref={playerContainerRef} className="w-full aspect-video bg-black" />
+                   
+                   {/* Player Controls & Info */}
+                   <div className="p-4 md:p-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                         <h2 className="text-xl font-bold truncate pr-4">{currentContent.title}</h2>
+                         <div className="flex items-center gap-2 shrink-0">
+                            <Button size="sm" variant="ghost" onClick={prevContent} disabled={currentContentIndex === 0}>
+                              <SkipBack className="w-5 h-5" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={togglePlayPause}>
+                              {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={nextContent} disabled={currentContentIndex === contents.length - 1}>
+                              <SkipForward className="w-5 h-5" />
+                            </Button>
+                         </div>
                       </div>
-                      <div>
-                        <Input
-                          placeholder="영상 제목 (선택사항 - 비워두면 자동으로 가져옵니다)"
-                          value={newVideoTitle}
-                          onChange={(e) => setNewVideoTitle(e.target.value)}
-                          disabled={isLoadingMetadata}
-                          className="focus:ring-2 focus:ring-primary/20"
-                        />
+                      
+                      {/* Timeline */}
+                      <div className="flex items-center gap-3">
+                         <span className="text-xs text-muted-foreground font-mono w-10 text-right">{formatTime(currentTime)}</span>
+                         <Progress value={progress} className="h-1.5 flex-1" />
+                         <span className="text-xs text-muted-foreground font-mono w-10">{formatTime(duration)}</span>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={addVideo}
-                        disabled={isLoadingMetadata || !newVideoUrl.trim()}
-                        className="min-w-[80px] bg-primary hover:bg-primary/90"
-                      >
-                        {isLoadingMetadata ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                            처리중...
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="w-4 h-4 mr-2" />
-                            추가
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setNewVideoUrl("")
-                          setNewVideoTitle("")
-                          setShowAddForm(false)
-                        }}
-                        disabled={isLoadingMetadata}
-                        className="hover:bg-muted"
-                      >
-                        <X className="w-4 h-4 mr-2" />
-                        취소
-                      </Button>
-                    </div>
-                    <div className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950/20 dark:to-green-950/20 p-3 rounded-lg border border-primary/10">
-                      <p className="text-xs text-blue-700 dark:text-blue-300">
-                        🚀 <strong>자동 기능:</strong> YouTube URL을 입력하면 영상 제목, 썸네일, 채널 정보를 자동으로
-                        가져옵니다.
-                        <br />⚡ <strong>빠른 추가:</strong> URL만 입력하고 "추가" 버튼을 클릭하세요!
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
 
-              <div className="space-y-2">
-                {contents.map((content, index) => (
-                  <div
-                    key={content.id}
-                    className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                      index === currentContentIndex ? "bg-primary/10 border border-primary/20" : "hover:bg-muted/50"
-                    } ${isSelectionMode ? "cursor-default" : "cursor-pointer"}`}
-                    onClick={() => !isEditing && !isSelectionMode && setCurrentContentIndex(index)}
-                  >
-                    {isSelectionMode && (
-                      <Checkbox
-                        checked={selectedVideos.includes(content.id)}
-                        onCheckedChange={() => toggleVideoSelection(content.id)}
-                        className="flex-shrink-0"
-                      />
-                    )}
+                      {/* Video Actions */}
+                      <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                         <div className="flex items-center gap-2">
+                             <Badge variant="outline" className="font-normal">
+                                {currentContent.author || "YouTube"}
+                             </Badge>
+                             {currentContent.completed && (
+                                <Badge variant="default" className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-200">
+                                   <CheckCircle2 className="w-3 h-3 mr-1" /> 완료됨
+                                </Badge>
+                             )}
+                         </div>
+                         <div className="flex gap-2">
+                             <Button size="sm" variant="outline" onClick={markAsComplete}>
+                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                {currentContent.completed ? "완료 해제" : "완료 표시"}
+                             </Button>
+                         </div>
+                      </div>
+                   </div>
 
-                    {isEditing && !isSelectionMode && !isFromCommunity && (
-                      <GripVertical className="w-4 h-4 text-muted-foreground cursor-move" />
-                    )}
-
-                    <div className="flex-shrink-0">
-                      {content.completed ? (
-                        <CheckCircle2 className="w-5 h-5 text-primary" />
-                      ) : index === currentContentIndex ? (
-                        <Play className="w-5 h-5 text-primary" />
-                      ) : (
-                        <Circle className="w-5 h-5 text-muted-foreground" />
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      {editingContentId === content.id ? (
-                        <div className="flex gap-2">
-                          <Input
-                            defaultValue={content.title}
-                            className="text-sm"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                saveTitle(content.id, e.currentTarget.value)
-                              }
-                              if (e.key === "Escape") {
-                                setEditingContentId(null)
-                              }
-                            }}
-                            autoFocus
-                          />
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => {
-                              const input = e.currentTarget.parentElement?.querySelector("input")
-                              if (input) saveTitle(content.id, input.value)
-                            }}
-                          >
-                            <Save className="w-3 h-3" />
-                          </Button>
+                   {/* Notes Section - Collapsible or Inline */}
+                   {!isFromCommunity && (
+                      <div className="px-4 pb-4 md:px-6 md:pb-6">
+                        <div className="bg-muted/30 rounded-lg p-3">
+                           <div className="flex items-center justify-between mb-2">
+                              <h3 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                                 <Edit3 className="w-4 h-4" /> 내 노트
+                              </h3>
+                              <Button size="sm" variant="ghost" onClick={saveNotes} className="h-7 text-xs">저장</Button>
+                           </div>
+                           <Textarea
+                             placeholder="이 강의에 대한 중요 포인트나 메모를 남겨보세요..."
+                             value={userNotes}
+                             onChange={(e) => setUserNotes(e.target.value)}
+                             className="min-h-[80px] text-sm resize-y bg-background border-border/50"
+                           />
                         </div>
-                      ) : (
-                        <div>
-                          <h4
-                            className={`font-medium text-sm truncate ${
-                              index === currentContentIndex ? "text-primary" : "text-card-foreground"
-                            } ${selectedVideos.includes(content.id) ? "text-primary font-semibold" : ""}`}
-                          >
-                            {content.title}
-                          </h4>
-                          <p className="text-xs text-muted-foreground">{content.duration}</p>
-                        </div>
-                      )}
+                      </div>
+                   )}
+                </div>
+             ) : (
+                <div className="aspect-video bg-muted rounded-xl flex items-center justify-center border border-border">
+                   <div className="text-center p-6">
+                      <Play className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                      <p className="text-muted-foreground">재생할 영상을 선택해주세요</p>
+                      {isSelectionMode && <p className="text-primary text-sm mt-2">비디오 선택 모드입니다</p>}
+                   </div>
+                </div>
+             )}
+          </div>
+
+          {/* Right Column: Playlist */}
+          <div className="lg:col-span-1 order-2 h-full">
+            <div className="lg:sticky lg:top-20 flex flex-col gap-4 max-h-[calc(100vh-6rem)]">
+              {/* List Header */}
+              <Card className="border-border shadow-sm shrink-0">
+                  <CardHeader className="py-4 px-5">
+                    <div className="flex items-center justify-between">
+                       <CardTitle className="text-base font-bold">커리큘럼 목록</CardTitle>
+                       
+                       <div className="flex items-center gap-1">
+                          {isSelectionMode && (
+                             <Button size="sm" variant="ghost" onClick={selectAllVideos} className="h-8 text-xs">
+                                {selectedVideos.length === contents.length ? "해제" : "전체"}
+                             </Button>
+                          )}
+                           {!isFromCommunity && (
+                            <Button size="sm" variant="ghost" onClick={() => setShowAddForm(!showAddForm)} className="h-8 w-8 p-0">
+                               <Plus className="w-4 h-4" />
+                            </Button>
+                           )}
+                           <Button size="sm" variant="ghost" onClick={toggleSelectionMode} className="h-8 w-8 p-0">
+                               {isSelectionMode ? <CheckSquare className="w-4 h-4 text-primary" /> : <CheckSquare className="w-4 h-4" />}
+                           </Button>
+                       </div>
                     </div>
+                  </CardHeader>
+                  
+                  {/* Add Form (Inline) */}
+                  {showAddForm && (
+                     <div className="px-4 pb-4 border-b border-border/50 animate-in slide-in-from-top-2">
+                       <Card className="bg-muted/50 border-dashed border-primary/20">
+                         <CardContent className="p-3">
+                           <Tabs defaultValue="url" className="w-full">
+                              <TabsList className="grid w-full grid-cols-2 mb-3 h-8">
+                                <TabsTrigger value="url" className="text-xs">링크로 추가</TabsTrigger>
+                                <TabsTrigger value="search" className="text-xs">검색으로 추가</TabsTrigger>
+                              </TabsList>
+                              
+                              <TabsContent value="url" className="space-y-2 mt-0">
+                                 <Input
+                                   placeholder="YouTube URL..."
+                                   value={newVideoUrl}
+                                   onChange={(e) => setNewVideoUrl(e.target.value)}
+                                   className="h-8 text-xs bg-background"
+                                   onKeyDown={(e) => e.key === "Enter" && addVideo()}
+                                 />
+                                 <div className="flex justify-end gap-2">
+                                   <Button size="sm" variant="ghost" onClick={() => setShowAddForm(false)} className="h-7 text-xs">취소</Button>
+                                   <Button size="sm" onClick={addVideo} disabled={isLoadingMetadata} className="h-7 text-xs bg-primary text-primary-foreground">
+                                     {isLoadingMetadata ? "..." : "추가"}
+                                   </Button>
+                                 </div>
+                              </TabsContent>
 
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" size="sm" className="text-xs">
-                        {index + 1}
-                      </Badge>
+                              <TabsContent value="search" className="space-y-3 mt-0">
+                                 <div className="flex gap-2">
+                                    <Input
+                                      placeholder="검색어 입력 (예: 엑셀 기초)"
+                                      value={searchQuery}
+                                      onChange={(e) => setSearchQuery(e.target.value)}
+                                      className="h-8 text-xs bg-background"
+                                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                                    />
+                                    <Button size="sm" onClick={handleSearch} disabled={isSearching} className="h-8 w-12 p-0">
+                                       {isSearching ? <Loader2 className="w-3 h-3 animate-spin"/> : <Search className="w-3 h-3"/>}
+                                    </Button>
+                                 </div>
+                                 
+                                 {/* Search Results */}
+                                 {searchResults.length > 0 && (
+                                    <div className="max-h-[200px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                       {searchResults.map((video) => (
+                                          <div key={video.id} className="flex gap-2 items-start p-2 rounded bg-background border border-border/50 hover:border-primary/50 group">
+                                             <img src={video.thumbnail} alt="" className="w-16 h-9 object-cover rounded bg-muted" />
+                                             <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-medium line-clamp-1" title={video.title}>{video.title}</p>
+                                                <p className="text-[10px] text-muted-foreground">{video.channel.name}</p>
+                                             </div>
+                                             <Button size="sm" variant="ghost" onClick={() => addVideoFromSearch(video)} className="h-6 w-6 p-0 shrink-0">
+                                                <Plus className="w-3 h-3" />
+                                             </Button>
+                                          </div>
+                                       ))}
+                                    </div>
+                                 )}
+                              </TabsContent>
+                           </Tabs>
+                         </CardContent>
+                       </Card>
+                     </div>
+                  )}
+              </Card>
 
-                      {isEditing && !isSelectionMode && !isFromCommunity && (
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              startEditingTitle(content.id)
+              {/* Scrollable List */}
+              <Card className="border-border shadow-sm flex-1 overflow-hidden flex flex-col">
+                 <div className="overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                    {contents.map((content, index) => {
+                       const isActive = index === currentContentIndex && !isSelectionMode;
+                       return (
+                          <div
+                            key={content.id}
+                            id={`content-${index}`}
+                            className={`
+                               group relative flex gap-3 p-3 rounded-lg transition-all border-l-4
+                               ${isActive 
+                                 ? "bg-primary/5 border-primary" 
+                                 : "border-transparent hover:bg-muted/50"
+                               }
+                               ${content.completed ? "opacity-75 hover:opacity-100" : ""}
+                               cursor-pointer
+                            `}
+                            onClick={() => {
+                               if (isSelectionMode) toggleVideoSelection(content.id)
+                               else if (!isEditing) setCurrentContentIndex(index)
                             }}
                           >
-                            <Edit3 className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              deleteVideo(content.id)
-                            }}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                             {/* Selecting / Status Icon */}
+                             <div className="shrink-0 flex items-start pt-1">
+                                {isSelectionMode ? (
+                                   <Checkbox 
+                                     checked={selectedVideos.includes(content.id)}
+                                     onCheckedChange={() => toggleVideoSelection(content.id)}
+                                   />
+                                ) : (
+                                   isActive ? (
+                                      <div className="relative">
+                                        <div className="w-4 h-4 rounded-full bg-primary/20 animate-ping absolute inset-0" />
+                                        <Play className="w-4 h-4 text-primary relative z-10 fill-current" />
+                                      </div>
+                                   ) : content.completed ? (
+                                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                   ) : (
+                                      <span className="text-xs font-mono text-muted-foreground w-4 text-center">{index + 1}</span>
+                                   )
+                                )}
+                             </div>
+                             
+                             {/* Details */}
+                             <div className="flex-1 min-w-0">
+                                <h4 className={`text-sm font-medium leading-tight mb-1 line-clamp-2 ${isActive ? "text-primary" : "text-foreground"}`}>
+                                   {content.title}
+                                </h4>
+                                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                   <span>{content.duration}</span>
+                                </div>
+                                
+                                {/* Item Progress Bar (Fake or Real if we track individual progress detailedly) */}
+                                {content.completed && (
+                                   <div className="mt-2 h-1 w-full bg-green-500/20 rounded-full overflow-hidden">
+                                      <div className="h-full bg-green-500 w-full" />
+                                   </div>
+                                )}
+                             </div>
 
-          {showCurriculumSelector && (
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="text-card-foreground">어느 커리큘럼에 추가하시겠습니까?</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Button
-                    variant="outline"
-                    className="h-auto p-4 text-left bg-transparent"
-                    onClick={() => handleAddToCurriculum("new")}
-                  >
-                    <div>
-                      <h4 className="font-medium">새 커리큘럼 만들기</h4>
-                      <p className="text-sm text-muted-foreground">선택한 비디오들로 새로운 커리큘럼을 생성합니다</p>
-                    </div>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-auto p-4 text-left bg-transparent"
-                    onClick={() => handleAddToCurriculum("existing-1")}
-                  >
-                    <div>
-                      <h4 className="font-medium">React 마스터하기</h4>
-                      <p className="text-sm text-muted-foreground">기존 커리큘럼에 추가합니다</p>
-                    </div>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-auto p-4 text-left bg-transparent"
-                    onClick={() => handleAddToCurriculum("existing-2")}
-                  >
-                    <div>
-                      <h4 className="font-medium">영어 회화 완성</h4>
-                      <p className="text-sm text-muted-foreground">기존 커리큘럼에 추가합니다</p>
-                    </div>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-auto p-4 text-left bg-transparent"
-                    onClick={() => handleAddToCurriculum("existing-3")}
-                  >
-                    <div>
-                      <h4 className="font-medium">창업 준비 과정</h4>
-                      <p className="text-sm text-muted-foreground">기존 커리큘럼에 추가합니다</p>
-                    </div>
-                  </Button>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowCurriculumSelector(false)
-                      setSelectedVideos([])
-                      setIsSelectionMode(false)
-                    }}
-                  >
-                    취소
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {(!isSelectionMode || (isFromCommunity && isPreviewMode)) && currentContent && (
-            <div className="bg-card border-border rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="ghost" onClick={prevContent} disabled={currentContentIndex === 0}>
-                    <SkipBack className="w-4 h-4" />
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={togglePlayPause}>
-                    {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={nextContent}
-                    disabled={currentContentIndex === contents.length - 1}
-                  >
-                    <SkipForward className="w-4 h-4" />
-                  </Button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">{formatTime(currentTime)}</span>
-                  <Progress value={progress} className="w-48" />
-                  <span className="text-sm text-muted-foreground">{formatTime(duration)}</span>
-                </div>
-              </div>
-              <div ref={playerContainerRef} className="w-full aspect-video bg-black rounded-lg overflow-hidden" />
-              {!isFromCommunity && (
-                <div className="mt-4">
-                  <Textarea
-                    placeholder="강의에 대한 노트를 작성하세요..."
-                    value={userNotes}
-                    onChange={(e) => setUserNotes(e.target.value)}
-                    className="resize-none"
-                  />
-                  <Button size="sm" onClick={saveNotes} className="mt-2">
-                    <Save className="w-4 h-4 mr-2" />
-                    노트 저장
-                  </Button>
-                </div>
-              )}
+                             {/* Actions (Hover) */}
+                             {!isFromCommunity && !isSelectionMode && (
+                                <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-background/80 backdrop-blur rounded-md p-0.5">
+                                   <Button size="icon" variant="ghost" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); deleteVideo(content.id); }}>
+                                      <Trash2 className="w-3 h-3 text-destructive" />
+                                   </Button>
+                                </div>
+                             )}
+                          </div>
+                       )
+                    })}
+                 </div>
+              </Card>
             </div>
-          )}
+          </div>
+
         </div>
+
+        {/* Modal for Curriculum Selection (preserved logic) */}
+        {showCurriculumSelector && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+               <Card className="w-full max-w-lg bg-background border-border shadow-xl">
+                  <CardHeader>
+                     <CardTitle>저장할 커리큘럼 선택</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                     <p>선택한 {selectedVideos.length}개의 영상을 어디에 저장할까요?</p>
+                     <div className="grid gap-2">
+                        <Button variant="outline" className="justify-start h-auto py-3" onClick={() => handleAddToCurriculum("new")}>
+                           <Plus className="w-4 h-4 mr-2" /> 새 커리큘럼 만들기
+                        </Button>
+                        <Button variant="outline" className="justify-start h-auto py-3" onClick={() => handleAddToCurriculum("existing")}>
+                           <BookOpen className="w-4 h-4 mr-2" /> 기존 커리큘럼에 추가 (기능 준비중)
+                        </Button>
+                     </div>
+                     <div className="flex justify-end pt-2">
+                        <Button variant="ghost" onClick={() => setShowCurriculumSelector(false)}>취소</Button>
+                     </div>
+                  </CardContent>
+               </Card>
+            </div>
+        )}
       </div>
     </div>
   )
