@@ -47,6 +47,10 @@ export function YouTubeAdvancedSearch({ onAdd, onCancel, initialQuery = "" }: Yo
     const searchQuery = overrideQuery || query
     if (!searchQuery.trim()) return
 
+    if (overrideQuery) {
+        setQuery(overrideQuery)
+    }
+
     setIsLoading(true)
     try {
       const response = await fetch(`/api/youtube/search?q=${encodeURIComponent(searchQuery)}`)
@@ -97,11 +101,10 @@ export function YouTubeAdvancedSearch({ onAdd, onCancel, initialQuery = "" }: Yo
   const handleSearchChannel = () => {
     if (previewVideo) {
       const channelName = previewVideo.channel.name
-      setQuery(channelName) // Update search bar
-      setPreviewVideo(null) // Close modal
-      handleSearch(channelName) // Trigger search
-      // Note: A more advanced implementation might use a specific channel search API, 
-      // but searching by channel name often yields good results for user intent "more from this creator".
+      // Close modal first
+      setPreviewVideo(null) 
+      // Then trigger search with channel name
+      handleSearch(channelName)
     }
   }
 

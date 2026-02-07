@@ -85,13 +85,15 @@ function LoginContent() {
       if (error.code === "auth/operation-not-allowed") {
         errorMessage = "이메일/비밀번호 로그인이 비활성화되어 있습니다. 관리자에게 문의하세요."
       } else if (error.code === "auth/user-not-found") {
-        errorMessage = "등록되지 않은 이메일입니다."
+        errorMessage = "등록되지 않은 이메일입니다. 회원가입을 먼저 진행해주세요."
       } else if (error.code === "auth/wrong-password") {
         errorMessage = "비밀번호가 올바르지 않습니다."
       } else if (error.code === "auth/invalid-email") {
         errorMessage = "올바르지 않은 이메일 형식입니다."
       } else if (error.code === "auth/too-many-requests") {
         errorMessage = "너무 많은 로그인 시도가 있었습니다. 잠시 후 다시 시도하세요."
+      } else if (error.code === "auth/invalid-credential") {
+        errorMessage = "이메일 또는 비밀번호가 올바르지 않습니다. 계정이 없다면 회원가입을 먼저 진행해주세요."
       }
 
       setError(errorMessage)

@@ -254,8 +254,13 @@ function CreateCurriculumContent() {
       const curriculumId = await createCurriculum(curriculumData)
       console.log("[v0] Curriculum saved with ID:", curriculumId)
 
-      alert("커리큘럼이 성공적으로 생성되었습니다!")
-      router.push("/curriculum")
+      if (isPublic) {
+          alert("커리큘럼이 생성되고 커뮤니티에 공유되었습니다!")
+          router.push("/community")
+      } else {
+          alert("커리큘럼이 성공적으로 생성되었습니다!")
+          router.push("/curriculum")
+      }
     } catch (error) {
       console.error("[v0] Failed to save curriculum:", error)
       alert("커리큘럼 저장에 실패했습니다. 다시 시도해주세요.")
