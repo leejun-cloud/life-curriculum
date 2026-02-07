@@ -90,6 +90,14 @@ export default function HomePage() {
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               나만의 커리큘럼을 만들고, 함께 성장하는 즐거움을 경험하세요.
             </p>
+            <div className="flex justify-center gap-4">
+              <Link href="/community">
+                <Button variant="outline" size="lg" className="rounded-full">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  커뮤니티 둘러보기
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {/* Large Search Bar */}

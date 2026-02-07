@@ -6,39 +6,22 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
 import { RoleGuard } from "@/components/role-guard"
 import { createTeam, getCurrentUser } from "@/lib/auth"
-import { ArrowLeft, Users, Settings, Lock, Mail, Copy, Check } from "lucide-react"
+import { ArrowLeft, Users, Copy, Check, BookOpen } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-
-const teamCategories = [
-  "개발팀",
-  "디자인팀",
-  "마케팅팀",
-  "기획팀",
-  "영업팀",
-  "HR팀",
-  "스터디그룹",
-  "프로젝트팀",
-  "기타",
-]
 
 function CreateTeamContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [teamName, setTeamName] = useState("")
   const [description, setDescription] = useState("")
-  const [category, setCategory] = useState("")
-  const [isPrivate, setIsPrivate] = useState(false)
-  const [maxMembers, setMaxMembers] = useState("20")
   const [inviteCode, setInviteCode] = useState("")
-  const [autoApprove, setAutoApprove] = useState(true)
-  const [allowMemberInvite, setAllowMemberInvite] = useState(false)
   const [copied, setCopied] = useState(false)
   const [curriculumId, setCurriculumId] = useState<string | null>(null)
+  const [curriculumTitle, setCurriculumTitle] = useState<string | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
 
   useEffect(() => {
     const cid = searchParams.get("curriculumId")
@@ -47,254 +30,161 @@ function CreateTeamContent() {
     if (cid) {
       setCurriculumId(cid)
       if (cTitle) {
+        setCurriculumTitle(cTitle)
         setTeamName(`${cTitle} 스터디`)
         setDescription(`'${cTitle}' 커리큘럼을 같이 공부하는 모임입니다.`)
       }
-      setCategory("스터디그룹")
     }
-  }, [searchParams])
 
-  const generateInviteCode = () => {
+    // Auto-generate invite code
     const code = Math.random().toString(36).substring(2, 8).toUpperCase()
     setInviteCode(code)
-  }
+  }, [searchParams])
 
-  const copyInviteCode = async () => {
-    if (inviteCode) {
-      await navigator.clipboard.writeText(inviteCode)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
+  const copyInviteLink = async () => {
+    const link = `${window.location.origin}/team/join/${inviteCode}`
+    await navigator.clipboard.writeText(link)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   const handleCreateTeam = async () => {
     if (!teamName.trim()) {
-      alert("팀 이름을 입력해주세요.")
+      alert("그룹 이름을 입력해주세요.")
       return
     }
 
-    const currentUser = await getCurrentUser()
-    if (!currentUser) {
+    setIsCreating(true)
+
+    try {
+      const currentUser = await getCurrentUser()
+      if (!currentUser) {
         alert("로그인이 필요합니다.")
+        setIsCreating(false)
         return
-    }
+      }
 
-    // Pass additional data including curriculumId
-    const team = await createTeam(teamName, currentUser.id, {
+      const team = await createTeam(teamName, currentUser.id, {
         description,
-        category,
-        isPrivate,
-        maxMembers: Number.parseInt(maxMembers),
         inviteCode,
-        autoApprove,
-        allowMemberInvite,
-        curriculumId, // Link existing curriculum
-    })
+        curriculumId,
+        curriculumTitle,
+      })
 
-    // 팀 설정 저장 (LocalStorage backup - maintaining existing logic)
-    const teamSettings = {
-      teamId: team.id,
-      description,
-      category,
-      isPrivate,
-      maxMembers: Number.parseInt(maxMembers),
-      inviteCode,
-      autoApprove,
-      allowMemberInvite,
-      curriculumId,
+      console.log("[v0] Team created:", team)
+      alert("그룹이 생성되었습니다!")
+      router.push(`/team/${team.id}`)
+    } catch (error) {
+      console.error("[v0] Error creating team:", error)
+      alert("그룹 생성 중 오류가 발생했습니다.")
+    } finally {
+      setIsCreating(false)
     }
-
-    localStorage.setItem(`team_settings_${team.id}`, JSON.stringify(teamSettings))
-
-    console.log("[v0] Team created:", team)
-    
-    alert("팀이 성공적으로 생성되었습니다!")
-    router.push("/team/dashboard")
   }
 
   return (
     <div className="min-h-screen bg-background">
-        {/* Header */}
-        <header className="bg-card border-b border-border">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-4 h-16">
-              <Link href="/settings">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <Users className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <h1 className="text-xl font-bold text-foreground">새 팀 만들기</h1>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="space-y-8">
-            {curriculumId && (
-                <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg flex items-center gap-3 text-primary">
-                    <Check className="w-5 h-5" />
-                    <p className="font-medium">선택된 커리큘럼으로 스터디 팀을 생성합니다.</p>
-                </div>
-            )}
-            
-            {/* Basic Information */}
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-card-foreground">
-                  <Settings className="w-5 h-5 text-primary" />
-                  기본 정보
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="team-name">팀 이름 *</Label>
-                  <Input
-                    id="team-name"
-                    placeholder="예: 프론트엔드 개발팀"
-                    value={teamName}
-                    onChange={(e) => setTeamName(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">팀 설명</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="팀의 목표와 활동에 대해 간단히 설명해주세요"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="min-h-[100px]"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Label>팀 카테고리</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {teamCategories.map((cat) => (
-                      <Badge
-                        key={cat}
-                        variant={category === cat ? "default" : "outline"}
-                        className="cursor-pointer hover:bg-primary/80 transition-colors"
-                        onClick={() => setCategory(cat)}
-                      >
-                        {cat}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="max-members">최대 팀원 수</Label>
-                  <Input
-                    id="max-members"
-                    type="number"
-                    min="2"
-                    max="100"
-                    value={maxMembers}
-                    onChange={(e) => setMaxMembers(e.target.value)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Privacy Settings */}
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-card-foreground">
-                  <Lock className="w-5 h-5 text-primary" />
-                  개인정보 및 접근 설정
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="private-team" className="text-base font-medium">
-                      비공개 팀
-                    </Label>
-                    <p className="text-sm text-muted-foreground">초대받은 사람만 팀에 참여할 수 있습니다</p>
-                  </div>
-                  <Switch id="private-team" checked={isPrivate} onCheckedChange={setIsPrivate} />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="auto-approve" className="text-base font-medium">
-                      자동 승인
-                    </Label>
-                    <p className="text-sm text-muted-foreground">가입 요청을 자동으로 승인합니다</p>
-                  </div>
-                  <Switch id="auto-approve" checked={autoApprove} onCheckedChange={setAutoApprove} />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="member-invite" className="text-base font-medium">
-                      팀원 초대 허용
-                    </Label>
-                    <p className="text-sm text-muted-foreground">일반 팀원도 다른 사람을 초대할 수 있습니다</p>
-                  </div>
-                  <Switch id="member-invite" checked={allowMemberInvite} onCheckedChange={setAllowMemberInvite} />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Invite Code */}
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-card-foreground">
-                  <Mail className="w-5 h-5 text-primary" />
-                  초대 코드
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">팀원들이 이 코드를 사용해서 팀에 참여할 수 있습니다.</p>
-
-                <div className="flex gap-2">
-                  <Input
-                    value={inviteCode}
-                    onChange={(e) => setInviteCode(e.target.value)}
-                    placeholder="초대 코드를 입력하거나 생성하세요"
-                    className="font-mono"
-                  />
-                  <Button variant="outline" onClick={generateInviteCode}>
-                    생성
-                  </Button>
-                  <Button variant="outline" onClick={copyInviteCode} disabled={!inviteCode}>
-                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  </Button>
-                </div>
-
-                {inviteCode && (
-                  <div className="p-3 bg-muted/50 rounded-lg">
-                    <p className="text-sm text-card-foreground">
-                      초대 링크:{" "}
-                      <code className="bg-muted px-1 rounded">
-                        {window.location.origin}/team/join/{inviteCode}
-                      </code>
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Action Buttons */}
-            <div className="flex justify-center gap-4">
-              <Link href="/settings">
-                <Button variant="outline" size="lg">
-                  취소
-                </Button>
-              </Link>
-              <Button size="lg" onClick={handleCreateTeam} className="bg-primary hover:bg-primary/90">
-                팀 만들기
+      {/* Header */}
+      <header className="bg-card border-b border-border">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-4 h-16">
+            <Link href="/">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="w-4 h-4" />
               </Button>
+            </Link>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <h1 className="text-xl font-bold text-foreground">새 그룹 만들기</h1>
             </div>
           </div>
-        </main>
+        </div>
+      </header>
+
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-6">
+          {/* Curriculum Info */}
+          {curriculumId && (
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="flex items-center gap-3 p-4">
+                <BookOpen className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="text-sm text-muted-foreground">연결된 커리큘럼</p>
+                  <p className="font-medium text-foreground">{curriculumTitle || "선택된 커리큘럼"}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Basic Info */}
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="text-card-foreground">그룹 정보</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="team-name">그룹 이름 *</Label>
+                <Input
+                  id="team-name"
+                  placeholder="예: React 스터디"
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">설명 (선택)</Label>
+                <Textarea
+                  id="description"
+                  placeholder="그룹에 대해 간단히 설명해주세요"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="min-h-[80px]"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Invite Link */}
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="text-card-foreground">초대 링크</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                이 링크를 공유하면 누구나 그룹에 참여할 수 있습니다.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/team/join/${inviteCode}`}
+                  readOnly
+                  className="font-mono text-sm"
+                />
+                <Button variant="outline" onClick={copyInviteLink}>
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Actions */}
+          <div className="flex justify-center gap-4 pt-4">
+            <Link href="/">
+              <Button variant="outline" size="lg">취소</Button>
+            </Link>
+            <Button 
+              size="lg" 
+              onClick={handleCreateTeam} 
+              disabled={isCreating}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {isCreating ? "생성 중..." : "그룹 만들기"}
+            </Button>
+          </div>
+        </div>
+      </main>
     </div>
   )
 }
@@ -305,9 +195,9 @@ export default function CreateTeam() {
       allowedRoles={["user", "team_leader", "admin"]}
       fallback={<div className="p-8 text-center text-muted-foreground">로그인이 필요합니다.</div>}
     >
-        <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
-            <CreateTeamContent />
-        </Suspense>
+      <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
+        <CreateTeamContent />
+      </Suspense>
     </RoleGuard>
   )
 }

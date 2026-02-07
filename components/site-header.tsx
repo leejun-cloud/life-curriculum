@@ -24,6 +24,9 @@ export function SiteHeader() {
           <div className="flex items-center gap-4">
             {user ? (
               <div className="flex items-center gap-2">
+                <Link href="/community">
+                  <Button variant="ghost" className="rounded-full">커뮤니티</Button>
+                </Link>
                 <Link href="/progress">
                   <Button className="rounded-full px-6 gradient-violet hover:opacity-90 transition-opacity">
                     {user.avatar && <span className="mr-2">{user.avatar}</span>}
@@ -36,6 +39,9 @@ export function SiteHeader() {
               </div>
             ) : (
               <div className="flex items-center gap-2">
+                <Link href="/community">
+                  <Button variant="ghost" className="rounded-full">커뮤니티</Button>
+                </Link>
                 <Link href="/login">
                   <Button variant="ghost" className="rounded-full">로그인</Button>
                 </Link>

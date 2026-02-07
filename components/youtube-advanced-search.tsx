@@ -238,3 +238,5 @@ export function YouTubeAdvancedSearch({ onAdd, onCancel, initialQuery = "" }: Yo
     </div>
   )
 }
+
+export default YouTubeAdvancedSearch;

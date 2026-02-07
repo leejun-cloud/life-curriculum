@@ -214,6 +214,11 @@ export const getTeam = async (teamId: string) => {
   return teamSnap.exists() ? { id: teamSnap.id, ...teamSnap.data() } : null
 }
 
+export const deleteTeam = async (teamId: string) => {
+  const teamRef = doc(db, "teams", teamId)
+  return await deleteDoc(teamRef)
+}
+
 // Assignment operations
 export const createAssignment = async (assignmentData: any) => {
   return await addDoc(getAssignmentsCollection(), {

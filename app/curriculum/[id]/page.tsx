@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
+import YouTubeAdvancedSearch from "@/components/youtube-advanced-search"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -91,17 +92,31 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
   }
 
   const addVideoFromSearch = async (video: any) => {
+    // Construct new content object with safe defaults
     const newContent = {
       id: contents.length > 0 ? Math.max(...contents.map((c) => c.id)) + 1 : 1,
-      title: video.title,
-      duration: video.duration, 
+      title: video.title || "Untitled Video",
+      duration: video.duration || "0:00", 
       completed: false,
-      videoId: video.id,
-      url: video.url,
+      videoId: video.id || video.videoId || "",
+      // Use provided URL or construct from ID
+      url: video.url || (video.id || video.videoId ? `https://www.youtube.com/watch?v=${video.id || video.videoId}` : ""),
       notes: "",
-      thumbnail: video.thumbnail,
-      description: video.title, 
-      author: video.channel.name,
+      thumbnail: video.thumbnail || "",
+      description: video.title || "", 
+      author: video.channel?.name || "Unknown Channel",
+    }
+
+    // Sanity check: Ensure no undefined values exist
+    Object.keys(newContent).forEach(key => {
+      if ((newContent as any)[key] === undefined) {
+        (newContent as any)[key] = ""
+      }
+    })
+
+    if (!newContent.videoId || !newContent.url) {
+      alert("비디오 정보를 가져올 수 없습니다.")
+      return
     }
 
     const updatedContents = [...contents, newContent]
@@ -115,9 +130,12 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
         })
       } catch (firebaseError) {
         console.error("Error saving to Firebase:", firebaseError)
+        alert("저장 중 오류가 발생했습니다.")
+        // Revert state if save fails
+        setContents(contents) 
       }
 
-    alert(`✅ 추가됨: ${video.title}`)
+    alert(`✅ 추가됨: ${newContent.title}`)
   }
 
   const playerRef = useRef<any>(null)
@@ -403,19 +421,19 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
       setCurrentContentIndex(0)
     }
 
-    alert("영상이 삭제되었습니다!")
-
-    if (user) {
-      try {
-        const { updateCurriculum } = await import("@/lib/firebase-collections")
-        await updateCurriculum(params.id, {
-          contents: updatedContents,
-          updatedAt: new Date().toISOString(),
-        })
-      } catch (error) {
-        console.error("[v0] Error updating curriculum (delete):", error)
-        // If fail, maybe revert state or alert user? For now just log.
-      }
+    // Always save to Firebase
+    try {
+      const { updateCurriculum } = await import("@/lib/firebase-collections")
+      await updateCurriculum(params.id, {
+        contents: updatedContents,
+        updatedAt: new Date().toISOString(),
+      })
+      alert("영상이 삭제되었습니다!")
+    } catch (error) {
+      console.error("[v0] Error updating curriculum (delete):", error)
+      alert("삭제 중 오류가 발생했습니다. 다시 시도해주세요.")
+      // Revert state on error
+      setContents(contents)
     }
   }
 
@@ -1038,13 +1056,14 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
                                           id: videoData.videoId,
                                           title: videoData.title,
                                           thumbnail: videoData.thumbnail,
-                                          channel: { name: videoData.author, avatar: "" }, // Avatar might be missing but handled
-                                          duration: "0:00", // Duration might need parsing or be passed
+                                          channel: { name: videoData.author, avatar: "" },
+                                          duration: videoData.duration || "0:00", // Passed from component if available
                                           views: "0",
-                                          uploadedAt: ""
+                                          url: videoData.url || `https://www.youtube.com/watch?v=${videoData.videoId}`,
+                                          videoId: videoData.videoId
                                        })
                                     }}
-                                    onCancel={() => {}}
+                                    onCancel={() => setShowAddForm(false)}
                                  />
                               </TabsContent>
                            </Tabs>
