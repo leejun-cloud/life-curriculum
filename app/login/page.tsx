@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,12 +11,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BookOpen, Mail, Lock, User } from "lucide-react"
 import { signIn, signUp, signInWithGoogle } from "@/lib/auth"
 import { useAuth } from "@/components/auth-provider"
+import { Suspense } from "react"
 
-export default function LoginPage() {
+function LoginContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const mode = searchParams.get("mode")
   const { user, loading } = useAuth()
+  
+  const [activeTab, setActiveTab] = useState("signin")
+
+  useEffect(() => {
+    if (mode === "signup") {
+      setActiveTab("signup")
+    }
+  }, [mode])
+
 
   useEffect(() => {
     if (!loading && user) {
@@ -199,7 +211,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <Tabs defaultValue="signin" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">로그인</TabsTrigger>
               <TabsTrigger value="signup">회원가입</TabsTrigger>
@@ -318,5 +330,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   )
 }

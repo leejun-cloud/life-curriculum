@@ -39,7 +39,7 @@ export function SiteHeader() {
                 <Link href="/login">
                   <Button variant="ghost" className="rounded-full">로그인</Button>
                 </Link>
-                <Link href="/register">
+                <Link href="/login?mode=signup">
                   <Button className="rounded-full gradient-violet">시작하기</Button>
                 </Link>
               </div>
