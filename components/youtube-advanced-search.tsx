@@ -93,6 +93,8 @@ export function YouTubeAdvancedSearch({ onAdd, onCancel, initialQuery = "" }: Yo
         author: previewVideo.channel.name,
         thumbnail: previewVideo.thumbnail,
         url: previewVideo.url,
+        duration: previewVideo.duration,
+        views: previewVideo.views
       })
       setPreviewVideo(null)
     }

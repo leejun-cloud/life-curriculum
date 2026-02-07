@@ -94,26 +94,38 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
     }
   }
 
-  const addVideoFromSearch = async (video: any) => {
-    // Construct new content object with safe defaults
-    const newContent = {
-      id: contents.length > 0 ? Math.max(...contents.map((c) => c.id)) + 1 : 1,
+  const addVideoFromSearch = async (video: {
+    id: string
+    title: string
+    thumbnail: string
+    channel: { name: string; avatar: string }
+    duration?: string
+    views?: string
+    url?: string
+    videoId?: string
+  }) => {
+    // Generate ID
+    const newId = contents.length > 0 ? Math.max(...contents.map((c) => c.id)) + 1 : 1
+
+    const newContent: any = {
+      id: newId,
       title: video.title || "Untitled Video",
       duration: video.duration || "0:00", 
       completed: false,
-      videoId: video.id || video.videoId || "",
+      videoId: video.videoId || video.id || "",
       // Use provided URL or construct from ID
-      url: video.url || (video.id || video.videoId ? `https://www.youtube.com/watch?v=${video.id || video.videoId}` : ""),
+      url: video.url || (video.id || video.videoId ? `https://www.youtube.com/watch?v=${video.videoId || video.id}` : ""),
       notes: "",
       thumbnail: video.thumbnail || "",
       description: video.title || "", 
       author: video.channel?.name || "Unknown Channel",
+      views: video.views || "0"
     }
 
     // Sanity check: Ensure no undefined values exist
     Object.keys(newContent).forEach(key => {
-      if ((newContent as any)[key] === undefined) {
-        (newContent as any)[key] = ""
+      if (newContent[key] === undefined) {
+        newContent[key] = ""
       }
     })
 
@@ -399,18 +411,26 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
 
       const newId = contents.length > 0 ? Math.max(...contents.map((c) => c.id)) + 1 : 1
 
-      const newContent = {
+      const newContent: any = {
         id: newId,
-        title: metadata.title,
-        duration: metadata.duration,
+        title: metadata.title || "새로운 YouTube 영상",
+        duration: metadata.duration || "0:00",
         completed: false,
-        videoId: metadata.videoId,
+        videoId: metadata.videoId || "",
         url: newVideoUrl,
         notes: "",
-        thumbnail: metadata.thumbnail,
-        description: metadata.description,
-        author: metadata.author,
+        thumbnail: metadata.thumbnail || "",
+        description: metadata.description || "",
+        author: metadata.author || "Unknown",
+        views: "0" 
       }
+
+      // Sanity check
+      Object.keys(newContent).forEach(key => {
+        if (newContent[key] === undefined) {
+          newContent[key] = ""
+        }
+      })
 
       console.log("[v0] Adding new content:", newContent)
 
