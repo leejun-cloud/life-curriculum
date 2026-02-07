@@ -42,7 +42,24 @@ export async function signIn(email: string, password: string): Promise<User | nu
     const firebaseUser = userCredential.user
 
     // Firestore에서 사용자 프로필 가져오기
-    const userProfile = await getUser(firebaseUser.uid)
+    let userProfile = await getUser(firebaseUser.uid)
+
+    if (!userProfile) {
+      console.log("[v0] User profile not found in Firestore, creating new profile for:", firebaseUser.email)
+      const userData: Omit<User, "id"> = {
+        name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "User",
+        email: firebaseUser.email || "",
+        role: "user",
+        permissions: [],
+      }
+      
+      await createUser({ ...userData, id: firebaseUser.uid })
+      
+      userProfile = {
+        id: firebaseUser.uid,
+        ...userData,
+      }
+    }
 
     if (userProfile) {
       console.log("[v0] User signed in:", userProfile.email)
@@ -197,7 +214,20 @@ export function onAuthStateChange(callback: (user: User | null) => void) {
   return onAuthStateChanged(auth, async (firebaseUser) => {
     if (firebaseUser) {
       try {
-        const userProfile = await getUser(firebaseUser.uid)
+        let userProfile = await getUser(firebaseUser.uid)
+        
+        if (!userProfile) {
+          console.log("[v0] User profile missing in onAuthStateChange, creating:", firebaseUser.email)
+          const userData: Omit<User, "id"> = {
+            name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "User",
+            email: firebaseUser.email || "",
+            role: "user",
+            permissions: [],
+          }
+          await createUser({ ...userData, id: firebaseUser.uid })
+          userProfile = { id: firebaseUser.uid, ...userData }
+        }
+
         callback(userProfile as User)
       } catch (error) {
         console.error("[v0] Error getting user profile:", error)
