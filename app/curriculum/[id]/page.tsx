@@ -31,6 +31,7 @@ import {
   Loader2,
   Search,
   Share2,
+  GitFork,
 } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
@@ -68,6 +69,7 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
   const [selectedVideos, setSelectedVideos] = useState<number[]>([])
   const [showCurriculumSelector, setShowCurriculumSelector] = useState(false)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
+  const [isPublic, setIsPublic] = useState(false) // New state
 
   // Search State
   const [searchQuery, setSearchQuery] = useState("")
@@ -167,11 +169,8 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
   }
 
   const loadCurriculum = async () => {
-    if (!user) {
-      router.push("/login")
-      return
-    }
-
+    // Note: removed strict user check to allow public viewing
+    
     try {
       setLoading(true)
       console.log("[v0] Loading curriculum:", params.id)
@@ -184,17 +183,20 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
 
       console.log("[v0] Loaded curriculum data:", curriculumData)
       setCurriculum(curriculumData)
+      setIsPublic(curriculumData.isPublic || false)
       
-      // Load user progress
+      // Load user progress ONLY if user is logged in
       let userProgressMap: Record<number, any> = {}
-      try {
-         const { getCurriculumProgress } = await import("@/lib/firebase-collections")
-         const progressList = await getCurriculumProgress(user.id, params.id)
-         progressList.forEach((p: any) => {
-             userProgressMap[p.contentId] = p
-         })
-      } catch (e) {
-         console.error("Error loading progress:", e)
+      if (user) {
+        try {
+           const { getCurriculumProgress } = await import("@/lib/firebase-collections")
+           const progressList = await getCurriculumProgress(user.id, params.id)
+           progressList.forEach((p: any) => {
+               userProgressMap[p.contentId] = p
+           })
+        } catch (e) {
+           console.error("Error loading progress:", e)
+        }
       }
 
       const curriculumContents = (curriculumData.contents || []).map((content: any) => {
@@ -209,8 +211,8 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
         return {
           ...content,
           videoId: videoId || undefined,
-          // Override with user progress details
-          completed: userP ? (userP.progress > 90 || content.completed) : content.completed, 
+          // Override with user progress details if available
+          completed: userP ? (userP.progress > 90 || content.completed) : (user ? false : content.completed), 
           progress: userP ? userP.progress : 0,
         }
       })
@@ -239,6 +241,29 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
     const url = window.location.href
     navigator.clipboard.writeText(url)
     alert("링크가 복사되었습니다! 친구들에게 공유해보세요.")
+  }
+
+  const handleFork = async () => {
+    if (!user) {
+      if (confirm("이 커리큘럼을 내 공간으로 가져오려면 로그인이 필요합니다.\n로그인 페이지로 이동하시겠습니까?")) {
+        router.push(`/login?returnUrl=/curriculum/${params.id}`)
+      }
+      return
+    }
+
+    try {
+      const { forkCurriculum } = await import("@/lib/firebase-collections")
+      if (confirm("이 커리큘럼을 내 공간으로 복사하시겠습니까?")) {
+        const newCurriculumId = await forkCurriculum(params.id, user.id)
+        if (newCurriculumId) {
+          alert("커리큘럼이 복사되었습니다!")
+          router.push(`/curriculum/${newCurriculumId}`)
+        }
+      }
+    } catch (error) {
+      console.error("Fork failed:", error)
+      alert("커리큘럼 복사 중 오류가 발생しました.")
+    }
   }
 
   // Load Notes and Progress for current content
@@ -874,6 +899,26 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
     )
   }
 
+   const togglePublic = async () => {
+      if (!user || !curriculum || user.id !== curriculum.createdBy) return
+
+      const newPublicState = !isPublic
+      setIsPublic(newPublicState) // Optimistic update
+
+      try {
+         const { updateCurriculum } = await import("@/lib/firebase-collections")
+         await updateCurriculum(params.id, {
+            isPublic: newPublicState,
+            updatedAt: new Date().toISOString()
+         })
+         alert(newPublicState ? "커리큘럼이 커뮤니티에 공개되었습니다." : "커리큘럼이 비공개로 전환되었습니다.")
+      } catch (error) {
+         console.error("Failed to update public status:", error)
+         setIsPublic(!newPublicState) // Revert
+         alert("공개 설정 변경에 실패했습니다.")
+      }
+   }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card/50 backdrop-blur-sm border-b border-border sticky top-0 z-50">
@@ -896,8 +941,18 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
                       커뮤니티
                     </Badge>
                   )}
+                  {/* Public Toggle Badge for Owner */}
+                  {user && curriculum.createdBy === user.id && (
+                     <Badge 
+                        variant={isPublic ? "default" : "outline"} 
+                        className="cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={togglePublic}
+                     >
+                        {isPublic ? "공개됨" : "비공개"}
+                     </Badge>
+                  )}
                 </h1>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground mr-2">
                   {contents.filter((c) => c.completed).length}/{contents.length} 강의 완료
                 </p>
               </div>
@@ -907,6 +962,13 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
                  <Share2 className="w-4 h-4 mr-2" />
                  공유
                </Button>
+               
+               {curriculum && (!user || curriculum.createdBy !== user.id) && (
+                 <Button size="sm" onClick={handleFork} className="bg-blue-600 hover:bg-blue-700 text-white">
+                   <GitFork className="w-4 h-4 mr-2" />
+                   내 커리큘럼으로 가져오기
+                 </Button>
+               )}
 
                {/* Progress Bar in Header - Optional or Simplified */}
               <div className="flex items-center gap-2">
