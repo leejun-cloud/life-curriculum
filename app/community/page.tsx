@@ -21,16 +21,48 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { useAuth } from "@/components/auth-provider"
 
 export default function CommunityPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [posts, setPosts] = useState<any[]>([])
   const [followingUsers, setFollowingUsers] = useState<string[]>([])
+  const { user } = useAuth()
 
   useEffect(() => {
     const savedFollowing = JSON.parse(localStorage.getItem("followingUsers") || "[]")
     setFollowingUsers(savedFollowing)
+    loadPosts()
   }, [])
+
+  const loadPosts = async () => {
+     try {
+        const { getPublicCurriculums } = await import("@/lib/firebase-collections")
+        const curriculums = await getPublicCurriculums()
+        
+        const mappedPosts = curriculums.map(curr => ({
+           id: curr.id, // Using curriculum ID as post ID for simplicity
+           user: {
+              name: curr.author?.name || "Unknown",
+              avatar: curr.author?.avatar || "/placeholder.svg",
+              isFollowing: false // logic todo
+           },
+           timestamp: new Date(curr.createdAt).toLocaleDateString(),
+           content: `${curr.title} 커리큘럼을 공유합니다!`,
+           type: "curriculum_share",
+           curriculum: curr,
+           likes: curr.likes || 0,
+           isLiked: user ? (curr.likedBy || []).includes(user.id) : false,
+           comments: 0,
+           shares: 0,
+           isBookmarked: false,
+           hashtags: curr.hashtags || []
+        }))
+        setPosts(mappedPosts)
+     } catch (e) {
+        console.error("Failed to load community posts:", e)
+     }
+  }
 
   useEffect(() => {
     localStorage.setItem("followingUsers", JSON.stringify(followingUsers))
@@ -62,22 +94,67 @@ export default function CommunityPage() {
       case "bookmarks":
         return posts.filter((post) => post.isBookmarked)
       default:
+        // Simple search filtering
+        if (searchQuery) {
+           return posts.filter(p => 
+              p.curriculum?.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+              p.user.name.toLowerCase().includes(searchQuery.toLowerCase())
+           )
+        }
         return posts
     }
   }
 
-  const toggleLike = (postId: number) => {
-    setPosts(
-      posts.map((post) =>
-        post.id === postId
-          ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
-          : post,
-      ),
-    )
+  const toggleLike = async (curriculumId: string) => {
+    if (!user) {
+        alert("로그인이 필요합니다.")
+        return
+    }
+    
+    // Optimistic UI update
+    setPosts(prev => prev.map(p => {
+       if (p.curriculum.id === curriculumId) {
+          const newIsLiked = !p.isLiked
+          return {
+             ...p,
+             isLiked: newIsLiked,
+             likes: newIsLiked ? p.likes + 1 : p.likes - 1
+          }
+       }
+       return p
+    }))
+
+    try {
+       const { toggleLikeCurriculum } = await import("@/lib/firebase-collections")
+       await toggleLikeCurriculum(curriculumId, user.id)
+       // Could reload posts here to be safe, but optimistic is better UX
+    } catch (e) {
+       console.error("Error toggling like:", e)
+       // Revert TODO
+    }
   }
 
-  const toggleBookmark = (postId: number) => {
+  const toggleBookmark = (postId: string) => {
+    // Local bookmark for now
     setPosts(posts.map((post) => (post.id === postId ? { ...post, isBookmarked: !post.isBookmarked } : post)))
+  }
+
+  const handleImportCurriculum = async (curriculumId: string) => {
+    if (!user) {
+        alert("로그인이 필요합니다.")
+        return
+    }
+
+    if (!confirm("이 커리큘럼을 내 보관함으로 가져오시겠습니까?")) return
+
+    try {
+        const { forkCurriculum } = await import("@/lib/firebase-collections")
+        await forkCurriculum(curriculumId, user.id)
+        alert("커리큘럼을 성공적으로 가져왔습니다!")
+    } catch (e) {
+        console.error("Failed to import curriculum:", e)
+        alert("커리큘럼 가져오기에 실패했습니다.")
+    }
   }
 
   return (
@@ -190,7 +267,7 @@ export default function CommunityPage() {
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => console.log("Import curriculum clicked")}
+                                        onClick={() => handleImportCurriculum(post.curriculum.id)}
                                         className="text-xs"
                                       >
                                         <BookOpen className="w-3 h-3 mr-1" />내 커리큘럼으로

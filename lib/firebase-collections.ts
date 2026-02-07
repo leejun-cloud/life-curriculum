@@ -111,6 +111,17 @@ export const getCurriculums = async (userId?: string) => {
   })
 }
 
+export const getPublicCurriculums = async (limitCount = 50) => {
+  const q = query(
+    getCurriculumsCollection(),
+    where("isPublic", "==", true),
+    orderBy("createdAt", "desc"),
+    limit(limitCount)
+  )
+  const querySnapshot = await getDocs(q)
+  return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+}
+
 export const getCurriculum = async (curriculumId: string) => {
   const curriculumRef = doc(db, "curriculums", curriculumId)
   const curriculumSnap = await getDoc(curriculumRef)
@@ -143,6 +154,7 @@ export const forkCurriculum = async (originalCurriculumId: string, newOwnerId: s
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     likes: 0,
+    likedBy: [], // Initialize likedBy
     views: 0,
     students: 1, // The forker is the first student
     isPublic: false, // Reset to private by default
@@ -152,6 +164,31 @@ export const forkCurriculum = async (originalCurriculumId: string, newOwnerId: s
   // Remove fields that should not be copied if any (e.g. implementation details)
   
   return await addDoc(getCurriculumsCollection(), newCurriculumData)
+}
+
+export const toggleLikeCurriculum = async (curriculumId: string, userId: string) => {
+  const curriculumRef = doc(db, "curriculums", curriculumId)
+  const snap = await getDoc(curriculumRef)
+  
+  if (!snap.exists()) return
+
+  const data = snap.data()
+  const likedBy = data.likedBy || []
+  const isLiked = likedBy.includes(userId)
+
+  if (isLiked) {
+    await updateDoc(curriculumRef, {
+       likes: increment(-1),
+       likedBy: likedBy.filter((id: string) => id !== userId)
+    })
+    return false // isLiked now
+  } else {
+    await updateDoc(curriculumRef, {
+       likes: increment(1),
+       likedBy: [...likedBy, userId]
+    })
+    return true // isLiked now
+  }
 }
 
 // Team operations

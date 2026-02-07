@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   ArrowLeft,
   BookOpen,
@@ -111,7 +111,7 @@ function CreateCurriculumContent() {
 
   const [selectedCategory, setSelectedCategory] = useState("tech")
   const [selectedLevel, setSelectedLevel] = useState("중급")
-  const [privacy, setPrivacy] = useState("public")
+  const [isPublic, setIsPublic] = useState(true)
   const [newContentUrl, setNewContentUrl] = useState("")
   const [isLoadingContent, setIsLoadingContent] = useState(false)
   const [contents, setContents] = useState<ContentItem[]>([])
@@ -226,16 +226,22 @@ function CreateCurriculumContent() {
         description: description.trim() || "커리큘럼 설명을 추가해주세요.",
         category: selectedCategory,
         level: selectedLevel,
-        privacy,
+        isPublic,
         hashtags,
         contents,
         createdBy: user.id,
+        author: {
+           name: user.name || "Unknown",
+           avatar: user.avatar || "/placeholder.svg"
+        },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        isPublic: privacy === "public",
         progress: 0,
         totalVideos: contents.length,
         completedVideos: 0,
+        likes: 0,
+        likedBy: [],
+        views: 0
       }
 
       console.log("[v0] Saving curriculum to Firebase:", curriculumData)
@@ -410,24 +416,24 @@ function CreateCurriculumContent() {
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <Label className="text-card-foreground">공개 설정</Label>
-                <RadioGroup value={privacy} onValueChange={setPrivacy}>
-                  <div className="flex items-center space-x-3">
-                    <RadioGroupItem value="public" id="public" />
-                    <Label htmlFor="public" className="flex items-center gap-2 cursor-pointer">
-                      <Globe className="w-4 h-4" />
-                      공개 (다른 사람이 볼 수 있음)
+                <div className="flex items-start space-x-3 p-4 border border-border rounded-lg bg-card/50">
+                  <Checkbox 
+                    id="isPublic" 
+                    checked={isPublic} 
+                    onCheckedChange={(c) => setIsPublic(c as boolean)} 
+                    className="mt-1"
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <Label htmlFor="isPublic" className="text-base font-medium cursor-pointer">
+                      커뮤니티에 공개
                     </Label>
+                    <p className="text-sm text-muted-foreground">
+                      이 커리큘럼을 다른 사용자들이 검색하고 학습할 수 있도록 커뮤니티에 공유합니다.
+                    </p>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <RadioGroupItem value="private" id="private" />
-                    <Label htmlFor="private" className="flex items-center gap-2 cursor-pointer">
-                      <Lock className="w-4 h-4" />
-                      비공개 (나만 볼 수 있음)
-                    </Label>
-                  </div>
-                </RadioGroup>
+                </div>
               </div>
             </CardContent>
           </Card>

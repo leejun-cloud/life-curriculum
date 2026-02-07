@@ -20,8 +20,15 @@ import {
   MoreVertical,
   Edit,
   Trash2,
-  Download,
 } from "lucide-react"
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Globe, Lock } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRealtime } from "@/components/realtime-provider"
@@ -153,6 +160,18 @@ export default function CurriculumPage() {
     }
   }
 
+  const handleToggleVisibility = async (curriculum: any) => {
+     try {
+        const { updateCurriculum } = await import("@/lib/firebase-collections")
+        const newStatus = !curriculum.isPublic
+        await updateCurriculum(curriculum.id, { isPublic: newStatus })
+        alert(newStatus ? "이 커리큘럼이 커뮤니티에 공개되었습니다." : "이 커리큘럼이 비공개로 전환되었습니다.")
+     } catch (e) {
+        console.error("Error toggling visibility:", e)
+        alert("상태 변경에 실패했습니다.")
+     }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -238,9 +257,29 @@ export default function CurriculumPage() {
                   className="object-cover rounded-t-lg"
                 />
                 <div className="absolute top-3 right-3">
-                  <Button variant="ghost" size="sm" className="bg-black/20 hover:bg-black/40 text-white h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); /* Menu logic */ }}>
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="bg-black/20 hover:bg-black/40 text-white h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
+                            <MoreVertical className="w-4 h-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleVisibility(curriculum); }}>
+                            {curriculum.isPublic ? (
+                                <>
+                                    <Lock className="w-4 h-4 mr-2" /> 커뮤니티에서 숨기기
+                                </>
+                            ) : (
+                                <>
+                                    <Globe className="w-4 h-4 mr-2" /> 커뮤니티에 공유
+                                </>
+                            )}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteCurriculum(curriculum.id); }}>
+                            <Trash2 className="w-4 h-4 mr-2" /> 삭제하기
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 <div className="absolute bottom-3 left-3 flex gap-2">
                   <Badge variant="secondary" className="bg-black/60 text-white backdrop-blur-sm">
