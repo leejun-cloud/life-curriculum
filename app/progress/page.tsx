@@ -1,13 +1,17 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ProgressTracker } from "@/components/progress-tracker"
-import { ArrowLeft, Calendar, BarChart3, Target, Plus } from "lucide-react"
+import { ArrowLeft, Calendar, BarChart3, Target, Plus, PlayCircle } from "lucide-react"
 import Link from "next/link"
+import { useRealtime } from "@/components/realtime-provider"
 
 export default function ProgressPage() {
+  const router = useRouter()
+  const { curriculums } = useRealtime()
   const [selectedDate, setSelectedDate] = useState<number | null>(15)
   const [learningDays] = useState([1, 2, 3, 5, 8, 9, 10, 12, 14, 15, 16, 17])
 
@@ -65,6 +69,42 @@ export default function ProgressPage() {
           <div>
             <h2 className="text-2xl font-bold text-foreground mb-6">진행률 대시보드</h2>
             <ProgressTracker />
+          </div>
+
+          {/* Enrolled Courses */}
+          <div>
+            <h2 className="text-2xl font-bold text-foreground mb-6">수강 중인 강의</h2>
+            {curriculums.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {curriculums.map((curriculum: any) => (
+                  <Card key={curriculum.id} className="bg-card/50 border-primary/20 hover:border-primary/40 transition-all cursor-pointer group" onClick={() => router.push(`/curriculum/${curriculum.id}`)}>
+                    <CardContent className="p-6 flex gap-4 items-center">
+                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+                        {curriculum.thumbnail ? (
+                          <img src={curriculum.thumbnail} alt={curriculum.title} className="w-full h-full object-cover rounded-xl" />
+                        ) : (
+                          <PlayCircle className="w-8 h-8 text-primary" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold truncate group-hover:text-primary transition-colors">{curriculum.title}</h3>
+                        <div className="flex items-center justify-between mt-2 text-sm text-muted-foreground">
+                          <span>진행률 {curriculum.progress || 0}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-muted rounded-full mt-2 overflow-hidden">
+                          <div className="h-full bg-primary" style={{ width: `${curriculum.progress || 0}%` }} />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+               <div className="text-center py-10 bg-card/30 rounded-2xl border border-dashed border-border">
+                  <p className="text-muted-foreground mb-4">아직 수강 중인 강의가 없습니다.</p>
+                  <Button variant="outline" onClick={() => router.push('/')}>강의 찾으러 가기</Button>
+               </div>
+            )}
           </div>
 
           {/* Learning Calendar */}
