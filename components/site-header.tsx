@@ -3,10 +3,10 @@
 import Link from "next/link"
 import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
-import { BookOpen } from "lucide-react"
+import { BookOpen, LogOut } from "lucide-react"
 
 export function SiteHeader() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
 
   return (
     <header className="sticky top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
@@ -23,12 +23,17 @@ export function SiteHeader() {
           {/* Right Actions */}
           <div className="flex items-center gap-4">
             {user ? (
-              <Link href="/progress">
-                <Button className="rounded-full px-6 gradient-violet hover:opacity-90 transition-opacity">
-                  {user.avatar && <span className="mr-2">{user.avatar}</span>}
-                  내 대시보드
+              <div className="flex items-center gap-2">
+                <Link href="/progress">
+                  <Button className="rounded-full px-6 gradient-violet hover:opacity-90 transition-opacity">
+                    {user.avatar && <span className="mr-2">{user.avatar}</span>}
+                    내 대시보드
+                  </Button>
+                </Link>
+                <Button variant="ghost" size="icon" onClick={() => signOut()} title="로그아웃">
+                  <LogOut className="w-5 h-5 text-muted-foreground hover:text-destructive transition-colors" />
                 </Button>
-              </Link>
+              </div>
             ) : (
               <div className="flex items-center gap-2">
                 <Link href="/login">

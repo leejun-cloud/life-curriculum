@@ -134,8 +134,7 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
       const { updateProgress } = await import("@/lib/firebase-collections")
       const progressPercent = total > 0 ? (current / total) * 100 : 0
 
-      await updateProgress(user.id, params.id, {
-        contentId: currentContent.id,
+      await updateProgress(user.id, params.id, currentContent.id, {
         currentTime: current,
         duration: total,
         progress: progressPercent,
@@ -166,21 +165,34 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
 
       console.log("[v0] Loaded curriculum data:", curriculumData)
       setCurriculum(curriculumData)
+      
+      // Load user progress
+      let userProgressMap: Record<number, any> = {}
+      try {
+         const { getCurriculumProgress } = await import("@/lib/firebase-collections")
+         const progressList = await getCurriculumProgress(user.id, params.id)
+         progressList.forEach((p: any) => {
+             userProgressMap[p.contentId] = p
+         })
+      } catch (e) {
+         console.error("Error loading progress:", e)
+      }
 
       const curriculumContents = (curriculumData.contents || []).map((content: any) => {
+        const userP = userProgressMap[content.id]
+        
         // If videoId already exists, use it
-        if (content.videoId) {
-          return content
+        let videoId = content.videoId
+        if (!videoId) {
+           videoId = extractYouTubeId(content.url)
         }
-
-        // Otherwise, extract from URL
-        const videoId = extractYouTubeId(content.url)
-
-        console.log("[v0] Extracted videoId for content:", content.id, "->", videoId)
 
         return {
           ...content,
           videoId: videoId || undefined,
+          // Override with user progress details
+          completed: userP ? (userP.progress > 90 || content.completed) : content.completed, 
+          progress: userP ? userP.progress : 0,
         }
       })
 
@@ -196,6 +208,42 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
       setLoading(false)
     }
   }
+
+  // Load Notes and Progress for current content
+  useEffect(() => {
+    if (!currentContent || !user) {
+        // Try local storage for notes if no user
+        if (currentContent) {
+            const localNote = localStorage.getItem(`note_${params.id}_${currentContent.id}`)
+            if (localNote) setUserNotes(localNote)
+            else setUserNotes("")
+        }
+        return
+    }
+
+    const loadUserData = async () => {
+        try {
+            const { getUserNote, getProgress } = await import("@/lib/firebase-collections")
+            
+            // Load Note
+            const note = await getUserNote(user.id, params.id, currentContent.id)
+            setUserNotes(note || "")
+
+            // Load Progress
+            const progressData = await getProgress(user.id, params.id, currentContent.id)
+            
+            if (progressData) {
+                console.log("[v0] Found saved progress for this content:", progressData.currentTime)
+                if (playerRef.current && typeof playerRef.current.seekTo === 'function') {
+                    playerRef.current.seekTo(progressData.currentTime)
+                }
+            }
+        } catch (e) {
+            console.error("Error loading user data:", e)
+        }
+    }
+    loadUserData()
+  }, [currentContent, user, params.id])
 
   const extractVideoMetadata = async (url: string) => {
     const videoId = extractYouTubeId(url)
@@ -341,7 +389,7 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
     }
   }
 
-  const deleteVideo = (contentId: number) => {
+  const deleteVideo = async (contentId: number) => {
     if (contents.length <= 1) {
       alert("최소 1개의 영상은 있어야 합니다.")
       return
@@ -356,6 +404,19 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
     }
 
     alert("영상이 삭제되었습니다!")
+
+    if (user) {
+      try {
+        const { updateCurriculum } = await import("@/lib/firebase-collections")
+        await updateCurriculum(params.id, {
+          contents: updatedContents,
+          updatedAt: new Date().toISOString(),
+        })
+      } catch (error) {
+        console.error("[v0] Error updating curriculum (delete):", error)
+        // If fail, maybe revert state or alert user? For now just log.
+      }
+    }
   }
 
   const startEditingTitle = (contentId: number) => {
@@ -427,7 +488,21 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
     }
 
     console.log("[v0] Saving notes:", noteData)
-    alert("노트가 저장되었습니다!")
+    
+    if (user) {
+       import("@/lib/firebase-collections").then(({ saveNote }) => {
+          saveNote(user.id, params.id, currentContent.id, userNotes)
+            .then(() => alert("노트가 저장되었습니다!"))
+            .catch(err => {
+               console.error("Error saving note:", err)
+               alert("노트 저장 실패")
+            })
+       })
+    } else {
+       // Local only fallback or prompt login
+       localStorage.setItem(`note_${params.id}_${currentContent.id}`, userNotes)
+       alert("노트가 로컬에 저장되었습니다 (로그인 필요)")
+    }
   }
 
   const continueFromLastPosition = () => {
@@ -956,37 +1031,21 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
                                  </div>
                               </TabsContent>
 
-                              <TabsContent value="search" className="space-y-3 mt-0">
-                                 <div className="flex gap-2">
-                                    <Input
-                                      placeholder="검색어 입력 (예: 엑셀 기초)"
-                                      value={searchQuery}
-                                      onChange={(e) => setSearchQuery(e.target.value)}
-                                      className="h-8 text-xs bg-background"
-                                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                                    />
-                                    <Button size="sm" onClick={handleSearch} disabled={isSearching} className="h-8 w-12 p-0">
-                                       {isSearching ? <Loader2 className="w-3 h-3 animate-spin"/> : <Search className="w-3 h-3"/>}
-                                    </Button>
-                                 </div>
-                                 
-                                 {/* Search Results */}
-                                 {searchResults.length > 0 && (
-                                    <div className="max-h-[200px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                                       {searchResults.map((video) => (
-                                          <div key={video.id} className="flex gap-2 items-start p-2 rounded bg-background border border-border/50 hover:border-primary/50 group">
-                                             <img src={video.thumbnail} alt="" className="w-16 h-9 object-cover rounded bg-muted" />
-                                             <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-medium line-clamp-1" title={video.title}>{video.title}</p>
-                                                <p className="text-[10px] text-muted-foreground">{video.channel.name}</p>
-                                             </div>
-                                             <Button size="sm" variant="ghost" onClick={() => addVideoFromSearch(video)} className="h-6 w-6 p-0 shrink-0">
-                                                <Plus className="w-3 h-3" />
-                                             </Button>
-                                          </div>
-                                       ))}
-                                    </div>
-                                 )}
+                              <TabsContent value="search" className="mt-0">
+                                 <YouTubeAdvancedSearch 
+                                    onAdd={(videoData) => {
+                                       addVideoFromSearch({
+                                          id: videoData.videoId,
+                                          title: videoData.title,
+                                          thumbnail: videoData.thumbnail,
+                                          channel: { name: videoData.author, avatar: "" }, // Avatar might be missing but handled
+                                          duration: "0:00", // Duration might need parsing or be passed
+                                          views: "0",
+                                          uploadedAt: ""
+                                       })
+                                    }}
+                                    onCancel={() => {}}
+                                 />
                               </TabsContent>
                            </Tabs>
                          </CardContent>

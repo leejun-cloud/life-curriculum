@@ -24,6 +24,7 @@ export const getTeamsCollection = () => collection(db, "teams")
 export const getAssignmentsCollection = () => collection(db, "assignments")
 export const getNotificationsCollection = () => collection(db, "notifications")
 export const getProgressCollection = () => collection(db, "progress")
+export const getNotesCollection = () => collection(db, "notes")
 
 // User operations
 export const createUser = async (userData: any) => {
@@ -213,23 +214,23 @@ export const getNotifications = async (userId: string) => {
 }
 
 // Progress operations
-export const updateProgress = async (userId: string, curriculumId: string, progressData: any) => {
-  const progressRef = doc(db, "progress", `${userId}_${curriculumId}`)
+// Progress operations
+export const updateProgress = async (userId: string, curriculumId: string, contentId: number, progressData: any) => {
+  const progressRef = doc(db, "progress", `${userId}_${curriculumId}_${contentId}`)
 
   try {
     const progressSnap = await getDoc(progressRef)
 
     if (progressSnap.exists()) {
-      // 기존 진행률 업데이트
       return await updateDoc(progressRef, {
         ...progressData,
         updatedAt: serverTimestamp(),
       })
     } else {
-      // 새로운 진행률 생성
       return await setDoc(progressRef, {
         userId,
         curriculumId,
+        contentId,
         ...progressData,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -241,10 +242,39 @@ export const updateProgress = async (userId: string, curriculumId: string, progr
   }
 }
 
-export const getProgress = async (userId: string, curriculumId: string) => {
-  const progressRef = doc(db, "progress", `${userId}_${curriculumId}`)
+export const getProgress = async (userId: string, curriculumId: string, contentId: number) => {
+  const progressRef = doc(db, "progress", `${userId}_${curriculumId}_${contentId}`)
   const progressSnap = await getDoc(progressRef)
   return progressSnap.exists() ? { id: progressSnap.id, ...progressSnap.data() } : null
+}
+
+// Helper to get ALL progress for a curriculum (to show list %s)
+export const getCurriculumProgress = async (userId: string, curriculumId: string) => {
+  const q = query(
+    getProgressCollection(), 
+    where("userId", "==", userId), 
+    where("curriculumId", "==", curriculumId)
+  )
+  const querySnapshot = await getDocs(q)
+  return querySnapshot.docs.map(doc => doc.data())
+}
+
+// Note operations
+export const saveNote = async (userId: string, curriculumId: string, contentId: number, note: string) => {
+  const noteRef = doc(db, "notes", `${userId}_${curriculumId}_${contentId}`)
+  await setDoc(noteRef, {
+    userId,
+    curriculumId,
+    contentId,
+    note,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export const getUserNote = async (userId: string, curriculumId: string, contentId: number) => {
+  const noteRef = doc(db, "notes", `${userId}_${curriculumId}_${contentId}`)
+  const noteSnap = await getDoc(noteRef)
+  return noteSnap.exists() ? noteSnap.data().note : ""
 }
 
 // Real-time listeners
