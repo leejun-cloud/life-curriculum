@@ -23,7 +23,7 @@ export function SiteHeader() {
           {/* Right Actions */}
           <div className="flex items-center gap-4">
             {user ? (
-              <Link href="/my-dashboard">
+              <Link href="/progress">
                 <Button className="rounded-full px-6 gradient-violet hover:opacity-90 transition-opacity">
                   {user.avatar && <span className="mr-2">{user.avatar}</span>}
                   내 대시보드

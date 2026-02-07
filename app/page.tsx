@@ -139,7 +139,7 @@ export default function HomePage() {
               <Sparkles className="w-5 h-5 text-yellow-500" />
               <span className="text-gradient-violet">이어서 학습하기</span>
             </h2>
-            <Link href="/my-dashboard">
+            <Link href="/progress">
               <Button variant="ghost" className="text-muted-foreground hover:text-primary">
                 내 대시보드 <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
