@@ -43,22 +43,66 @@ export default function GroupHomePage({ params }: { params: { id: string } }) {
 
   const loadTeamData = async () => {
     try {
-      const { getTeam, getTeamMembers } = await import("@/lib/firebase-collections")
+      const { getTeam, getUser, getCurriculumProgress, getCurriculum } = await import("@/lib/firebase-collections")
       const teamData = await getTeam(params.id)
       
       if (teamData) {
         setTeam(teamData)
         
-        // Load members (mock for now, replace with real data)
-        const memberList = teamData.memberIds || []
-        const memberData: TeamMember[] = memberList.map((memberId: string, index: number) => ({
-          id: memberId,
-          name: `멤버 ${index + 1}`,
-          email: `member${index + 1}@example.com`,
-          progress: Math.floor(Math.random() * 100),
-          lastActive: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-        }))
-        setMembers(memberData)
+        const memberIds = teamData.memberIds || []
+        
+        // Fetch Curriculum Metadata (to know total items for percentage calculation)
+        let totalItems = 0
+        if (teamData.curriculumId) {
+            const curr = await getCurriculum(teamData.curriculumId)
+            totalItems = curr?.contents?.length || 0
+        }
+
+        // Fetch Member Data & Progress in parallel
+        const memberPromises = memberIds.map(async (memberId: string) => {
+           // 1. Get User Profile
+           const userProfile = await getUser(memberId)
+           if (!userProfile) return null // Handle deleted/missing users
+
+           // 2. Get Progress (if curriculum connected)
+           let progressPercent = 0
+           let lastActive = userProfile.updatedAt ? new Date(userProfile.updatedAt.seconds * 1000) : new Date()
+
+           if (teamData.curriculumId && totalItems > 0) {
+               try {
+                  const progressDocs = await getCurriculumProgress(memberId, teamData.curriculumId)
+                  // Calculate average progress across all contents, or just completed count
+                  // Let's use: (Count of Completed / Total Items) * 100
+                  // Or sum of progress / total items. Let's use sum of progress for smoother bar.
+                  const totalProgressSum = progressDocs.reduce((sum: number, doc: any) => sum + (doc.progress || 0), 0)
+                  progressPercent = Math.round(totalProgressSum / totalItems)
+                  
+                  // Update lastActive based on most recent progress update
+                   const latestProgress = progressDocs.sort((a: any, b: any) => 
+                       (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0)
+                   )[0]
+                   if (latestProgress && latestProgress.updatedAt) {
+                       lastActive = new Date(latestProgress.updatedAt.seconds * 1000)
+                   }
+               } catch (e) {
+                   console.error(`Failed to load progress for ${memberId}`, e)
+               }
+           }
+
+           return {
+               id: memberId,
+               name: userProfile.name || "Unknown User",
+               email: userProfile.email || "",
+               avatar: userProfile.avatar || "",
+               progress: Math.min(progressPercent, 100),
+               lastActive: lastActive
+           }
+        })
+
+        const fetchedMembers = await Promise.all(memberPromises)
+        const validMembers = fetchedMembers.filter((m): m is TeamMember => m !== null)
+        
+        setMembers(validMembers)
       }
     } catch (error) {
       console.error("[v0] Error loading team:", error)

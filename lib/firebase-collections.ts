@@ -112,14 +112,41 @@ export const getCurriculums = async (userId?: string) => {
 }
 
 export const getPublicCurriculums = async (limitCount = 50) => {
-  const q = query(
-    getCurriculumsCollection(),
-    where("isPublic", "==", true),
-    orderBy("createdAt", "desc"),
-    limit(limitCount)
-  )
-  const querySnapshot = await getDocs(q)
-  return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+  try {
+    // Try efficient query with index
+    const q = query(
+      getCurriculumsCollection(),
+      where("isPublic", "==", true),
+      orderBy("createdAt", "desc"),
+      limit(limitCount)
+    )
+    const querySnapshot = await getDocs(q)
+    return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+  } catch (error: any) {
+    console.warn("[v0] Index missing or query failed, falling back to client-side sort:", error)
+    
+    // Fallback: Query all public items and sort in memory
+    // Note: limit might be applied after sort in a real app, 
+    // but here we just fetch and sort to ensure it works.
+    try {
+        const q = query(
+          getCurriculumsCollection(),
+          where("isPublic", "==", true)
+        )
+        const querySnapshot = await getDocs(q)
+        const docs = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+        
+        // Client-side sort
+        return docs.sort((a: any, b: any) => {
+            const timeA = a.createdAt?.seconds || 0
+            const timeB = b.createdAt?.seconds || 0
+            return timeB - timeA
+        }).slice(0, limitCount)
+    } catch (fallbackError) {
+        console.error("Fallback query also failed:", fallbackError)
+        return []
+    }
+  }
 }
 
 export const getCurriculum = async (curriculumId: string) => {

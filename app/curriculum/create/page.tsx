@@ -47,6 +47,8 @@ interface ContentItem {
   duration: string
   thumbnail: string
   type: "video" | "article" | "course"
+  videoId?: string
+  completed?: boolean
 }
 
 function extractYouTubeVideoId(url: string): string | null {
@@ -55,10 +57,10 @@ function extractYouTubeVideoId(url: string): string | null {
   return match ? match[1] : null
 }
 
-async function fetchYouTubeMetadata(url: string): Promise<Partial<ContentItem>> {
-  const videoId = extractYouTubeVideoId(url)
+async function fetchYouTubeMetadata(url: string, videoId?: string): Promise<Partial<ContentItem>> {
+  const id = videoId || extractYouTubeVideoId(url)
 
-  if (!videoId) {
+  if (!id) {
     return {
       title: "새로운 학습 콘텐츠",
       duration: "15분",
@@ -67,32 +69,24 @@ async function fetchYouTubeMetadata(url: string): Promise<Partial<ContentItem>> 
   }
 
   try {
-    console.log("[v0] Fetching YouTube metadata for video ID:", videoId)
-
-    // YouTube oEmbed API 사용
-    const oEmbedResponse = await fetch(
-      `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
-    )
-
-    if (oEmbedResponse.ok) {
-      const oEmbedData = await oEmbedResponse.json()
-      console.log("[v0] YouTube oEmbed data:", oEmbedData)
-
-      return {
-        title: oEmbedData.title || "새로운 학습 콘텐츠",
-        duration: "15분", // oEmbed에서는 duration을 제공하지 않음
-        thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-      }
+    const response = await fetch(`/api/youtube-metadata?videoId=${id}`)
+    
+    if (response.ok) {
+        const data = await response.json()
+        return {
+            title: data.title,
+            duration: data.duration, // API returns "정보 없음" or formatted duration if available
+            thumbnail: data.thumbnail
+        }
     }
   } catch (error) {
     console.error("[v0] Failed to fetch YouTube metadata:", error)
   }
 
-  // 실패 시 기본값 반환
   return {
     title: "새로운 학습 콘텐츠",
     duration: "15분",
-    thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+    thumbnail: `https://img.youtube.com/vi/${id}/maxresdefault.jpg`,
   }
 }
 
@@ -160,10 +154,16 @@ function CreateCurriculumContent() {
   const addContent = async () => {
     if (!newContentUrl.trim()) return
 
+    const videoId = extractYouTubeVideoId(newContentUrl)
+    if (!videoId) {
+        alert("올바른 YouTube URL을 입력해주세요.")
+        return
+    }
+
     setIsLoadingContent(true)
 
     try {
-      const metadata = await fetchYouTubeMetadata(newContentUrl)
+      const metadata = await fetchYouTubeMetadata(newContentUrl, videoId)
 
       const newContent: ContentItem = {
         id: Date.now().toString(),
@@ -172,6 +172,8 @@ function CreateCurriculumContent() {
         duration: metadata.duration || "15분",
         thumbnail: metadata.thumbnail || "/video-thumbnail.png",
         type: "video",
+        videoId: videoId,
+        completed: false
       }
 
       setContents([...contents, newContent])
@@ -183,8 +185,10 @@ function CreateCurriculumContent() {
         title: "새로운 학습 콘텐츠",
         url: newContentUrl,
         duration: "15분",
-        thumbnail: "/video-thumbnail.png",
+        thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
         type: "video",
+        videoId: videoId,
+        completed: false
       }
       setContents([...contents, newContent])
       setNewContentUrl("")
