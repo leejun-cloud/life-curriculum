@@ -29,7 +29,8 @@ import {
   Square,
   Copy,
   Loader2,
-  Search, // Added Search
+  Search,
+  Share2,
 } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
@@ -217,7 +218,14 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
       setContents(curriculumContents)
 
       if (curriculumContents.length > 0) {
-        setCurrentContentIndex(0)
+        // Find the first incomplete content to resume from
+        const firstIncompleteIndex = curriculumContents.findIndex((c: any) => !c.completed)
+        if (firstIncompleteIndex !== -1) {
+          setCurrentContentIndex(firstIncompleteIndex)
+        } else {
+          // If all completed, start from the beginning or stay at 0
+          setCurrentContentIndex(0) 
+        }
       }
     } catch (err) {
       console.error("[v0] Error loading curriculum:", err)
@@ -225,6 +233,12 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleShare = () => {
+    const url = window.location.href
+    navigator.clipboard.writeText(url)
+    alert("링크가 복사되었습니다! 친구들에게 공유해보세요.")
   }
 
   // Load Notes and Progress for current content
@@ -889,6 +903,11 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
               </div>
             </div>
             <div className="ml-auto hidden md:flex items-center gap-4">
+               <Button size="sm" variant="outline" onClick={handleShare}>
+                 <Share2 className="w-4 h-4 mr-2" />
+                 공유
+               </Button>
+
                {/* Progress Bar in Header - Optional or Simplified */}
               <div className="flex items-center gap-2">
                  <span className="text-xs text-muted-foreground">{Math.round(curriculum.progress || 0)}%</span>
