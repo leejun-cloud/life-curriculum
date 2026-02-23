@@ -19,6 +19,7 @@ import Link from "next/link"
 import { useAuth } from "@/components/auth-provider"
 import { useRealtime } from "@/components/realtime-provider"
 import { motion } from "framer-motion"
+import { RecommendedVideos } from "@/components/recommended-videos"
 
 // Mock data
 const POPULAR_TOPICS = ["React", "Python", "UX Design", "Marketing", "Data Science", "Writing"]
@@ -200,6 +201,9 @@ export default function HomePage() {
           )}
         </section>
       )}
+
+      {/* Recommended Videos Section */}
+      <RecommendedVideos />
 
       {/* Community Ticker / Activity */}
       <section className="py-12 border-t border-border/50 bg-muted/20">
