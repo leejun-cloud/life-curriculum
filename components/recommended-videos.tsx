@@ -1,77 +1,33 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, PlayCircle, Star, TrendingUp, MessageCircle, Eye, Clock } from "lucide-react"
-
-// Mock Data
-const RECOMMENDED_VIDEOS = [
-  {
-    id: "v1",
-    title: "2024년 반드시 알아야 할 AI 트렌드 총정리 (완벽 분석)",
-    channel: "AI 인사이트",
-    thumbnail: "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=800",
-    views: "125만회",
-    publishedAt: "3일 전",
-    duration: "15:24",
-    comments: "3.2천",
-    tags: ["AI", "Tech"],
-    isTrending: true,
-  },
-  {
-    id: "v2",
-    title: "코딩 레벨테스트 1단계부터 10단계까지, 당신의 위치는?",
-    channel: "개발자 김코딩",
-    thumbnail: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=800",
-    views: "89만회",
-    publishedAt: "1주 전",
-    duration: "24:10",
-    comments: "1.5천",
-    tags: ["Programming", "Career"],
-    isTrending: false,
-  },
-  {
-    id: "v3",
-    title: "성공하는 사람들의 아침 루틴 (뇌과학적 접근)",
-    channel: "라이프해커",
-    thumbnail: "https://images.unsplash.com/photo-1499209974431-9dddcece7fdd?auto=format&fit=crop&q=80&w=800",
-    views: "210만회",
-    publishedAt: "2주 전",
-    duration: "18:45",
-    comments: "5.1천",
-    tags: ["Mindset", "Productivity"],
-    isTrending: true,
-  },
-  {
-    id: "v4",
-    title: "Figma 기초강좌: 30분만에 끝내는 프로토타이핑",
-    channel: "디자인 베이스",
-    thumbnail: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800",
-    views: "45만회",
-    publishedAt: "5일 전",
-    duration: "32:15",
-    comments: "840",
-    tags: ["Design", "Figma"],
-    isTrending: false,
-  },
-  {
-    id: "v5",
-    title: "초보자를 위한 주식 투자 가이드 1편",
-    channel: "경제유튜버",
-    thumbnail: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&q=80&w=800",
-    views: "320만회",
-    publishedAt: "1개월 전",
-    duration: "45:00",
-    comments: "1.2만",
-    tags: ["Finance", "Investing"],
-    isTrending: true,
-  }
-]
+import { ChevronLeft, ChevronRight, PlayCircle, Star, TrendingUp, MessageCircle, Eye, Clock, Loader2 } from "lucide-react"
 
 export function RecommendedVideos() {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [videos, setVideos] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchRecommendations() {
+      try {
+        const res = await fetch('/api/youtube/recommendations')
+        if (res.ok) {
+          const data = await res.json()
+          setVideos(data.videos || [])
+        }
+      } catch (error) {
+        console.error("Failed to fetch recommendations:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    fetchRecommendations()
+  }, [])
   
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -104,11 +60,20 @@ export function RecommendedVideos() {
       </div>
 
       <div className="relative group">
-        <div 
-          ref={scrollRef}
-          className="flex overflow-x-auto gap-6 pb-6 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-        >
-          {RECOMMENDED_VIDEOS.map((video) => (
+        {isLoading ? (
+          <div className="flex justify-center items-center py-12 w-full">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : videos.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground w-full bg-card/50 rounded-xl border border-dashed">
+            추천 동영상을 불러올 수 없습니다.
+          </div>
+        ) : (
+          <div 
+            ref={scrollRef}
+            className="flex overflow-x-auto gap-6 pb-6 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+          >
+            {videos.map((video) => (
             <Card key={video.id} className="min-w-[280px] sm:min-w-[320px] max-w-[320px] flex-shrink-0 snap-start bg-card/50 hover:bg-card border-transparent hover:border-primary/20 transition-all cursor-pointer overflow-hidden group/card shadow-sm hover:shadow-md">
               <div className="relative aspect-video overflow-hidden">
                 <img 
@@ -158,7 +123,7 @@ export function RecommendedVideos() {
                          댓글 {video.comments}
                        </Badge>
                        <div className="flex gap-1">
-                         {video.tags.slice(0, 1).map(tag => (
+                         {video.tags.slice(0, 1).map((tag: string) => (
                            <span key={tag} className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-md font-medium">#{tag}</span>
                          ))}
                        </div>
@@ -168,7 +133,8 @@ export function RecommendedVideos() {
               </CardContent>
             </Card>
           ))}
-        </div>
+          </div>
+        )}
       </div>
     </section>
   )
