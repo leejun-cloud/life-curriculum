@@ -1,0 +1,30 @@
+[debug] [2026-02-23T15:02:49.797Z] ----------------------------------------------------------------------
+[debug] [2026-02-23T15:02:49.808Z] Command:       /Users/ichangjun/.nvm/versions/node/v24.13.0/bin/node /usr/local/bin/firebase init functions
+[debug] [2026-02-23T15:02:49.808Z] CLI Version:   15.2.1
+[debug] [2026-02-23T15:02:49.808Z] Platform:      darwin
+[debug] [2026-02-23T15:02:49.808Z] Node Version:  v24.13.0
+[debug] [2026-02-23T15:02:49.808Z] Time:          Tue Feb 24 2026 00:02:49 GMT+0900 (Korean Standard Time)
+[debug] [2026-02-23T15:02:49.808Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-02-23T15:02:49.809Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /Users/ichangjun/Documents/GitHub/v0-project
+
+[info] 
+=== Project Setup
+[info] 
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
+[info] 
+[debug] [2026-02-23T15:02:51.779Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-02-23T15:02:51.779Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[warn] ⚠  Unable to fetch the CLI MOTD and remote config. This is not a fatal error, but may indicate an issue with your network connection. 
+[debug] [2026-02-23T15:02:51.780Z] Failed to fetch MOTD Error: EPERM: operation not permitted, open '/Users/ichangjun/.config/configstore/firebase-tools.json.943722696'
