@@ -38,6 +38,7 @@ import { useAuth } from "@/components/auth-provider"
 import { getCurriculum } from "@/lib/firebase-collections"
 import { extractYouTubeId } from "@/lib/youtube-utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs" // Added Tabs
+import { CurriculumVideoRecommendations } from "@/components/curriculum-video-recommendations"
 
 export default function CurriculumDetailPage({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams()
@@ -894,23 +895,77 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
           </div>
         </header>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
           <Card className="bg-card border-border">
-            <CardContent className="p-8 text-center">
-              <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">아직 콘텐츠가 없습니다</h3>
-              <p className="text-muted-foreground mb-4">이 커리큘럼에는 아직 학습 콘텐츠가 추가되지 않았습니다.</p>
+            <CardContent className="p-8">
+              <div className="text-center mb-8">
+                <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">아직 콘텐츠가 없습니다</h3>
+                <p className="text-muted-foreground mb-4">새로운 학습 콘텐츠를 추가하고 커리큘럼을 시작해 보세요.</p>
+              </div>
+
               {!isFromCommunity && (
-                <Button
-                  onClick={() => {
-                    console.log("[v0] 첫 번째 영상 추가하기 버튼 클릭됨")
-                    console.log("[v0] Current showAddForm state:", showAddForm)
-                    setShowAddForm(true)
-                    console.log("[v0] showAddForm set to true")
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />첫 번째 영상 추가하기
-                </Button>
+                <div className="max-w-3xl mx-auto bg-muted/20 border border-primary/20 rounded-xl p-4 md:p-6 mb-8 shadow-sm">
+                   <h4 className="font-semibold text-sm mb-4 flex items-center gap-2 text-primary">
+                     <Plus className="w-4 h-4" /> 첫 번째 영상 추가
+                   </h4>
+                   <Tabs defaultValue="url" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 mb-4 h-10">
+                        <TabsTrigger value="url">링크로 직접 추가</TabsTrigger>
+                        <TabsTrigger value="search">YouTube 검색으로 추가</TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="url" className="space-y-4">
+                         <div className="flex flex-col sm:flex-row gap-3">
+                           <Input
+                             placeholder="YouTube 영상 URL (예: https://youtube.com/watch?v=...)"
+                             value={newVideoUrl}
+                             onChange={(e) => setNewVideoUrl(e.target.value)}
+                             className="flex-1"
+                             onKeyDown={(e) => e.key === "Enter" && addVideo()}
+                           />
+                           <Button onClick={addVideo} disabled={isLoadingMetadata} className="gradient-violet shrink-0 sm:w-32">
+                             {isLoadingMetadata ? <Loader2 className="w-4 h-4 animate-spin" /> : "영상 추가"}
+                           </Button>
+                         </div>
+                      </TabsContent>
+
+                      <TabsContent value="search">
+                         <YouTubeAdvancedSearch 
+                            suggestedQuery={curriculum.title}
+                            onAdd={(videoData) => {
+                               addVideoFromSearch({
+                                  id: videoData.videoId,
+                                  title: videoData.title,
+                                  thumbnail: videoData.thumbnail,
+                                  channel: { name: videoData.author, avatar: "" },
+                                  duration: videoData.duration || "0:00",
+                                  views: "0",
+                                  url: videoData.url || `https://www.youtube.com/watch?v=${videoData.videoId}`,
+                                  videoId: videoData.videoId
+                               })
+                            }}
+                            onCancel={() => {}}
+                         />
+                      </TabsContent>
+                   </Tabs>
+                </div>
+              )}
+              
+              {!isFromCommunity && (
+                <CurriculumVideoRecommendations 
+                  topic={curriculum.title} 
+                  onAddVideo={(video) => addVideoFromSearch({
+                    id: video.id,
+                    title: video.title,
+                    thumbnail: video.thumbnail,
+                    channel: video.channel,
+                    duration: video.duration,
+                    views: video.views,
+                    url: video.url,
+                    videoId: video.id
+                  })}
+                />
               )}
             </CardContent>
           </Card>
@@ -1252,6 +1307,25 @@ export default function CurriculumDetailPage({ params }: { params: { id: string 
           </div>
 
         </div>
+
+        {/* Recommendations at bottom */}
+        {!isFromCommunity && contents.length > 0 && (
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+            <CurriculumVideoRecommendations 
+              topic={curriculum.title} 
+              onAddVideo={(video) => addVideoFromSearch({
+                id: video.id,
+                title: video.title,
+                thumbnail: video.thumbnail,
+                channel: video.channel,
+                duration: video.duration,
+                views: video.views,
+                url: video.url,
+                videoId: video.id
+              })}
+            />
+          </div>
+        )}
 
         {/* Modal for Curriculum Selection (preserved logic) */}
         {showCurriculumSelector && (

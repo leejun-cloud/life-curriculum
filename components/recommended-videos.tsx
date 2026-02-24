@@ -4,12 +4,14 @@ import { useRef, useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, PlayCircle, Star, TrendingUp, MessageCircle, Eye, Clock, Loader2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, PlayCircle, Star, TrendingUp, MessageCircle, Eye, Clock, Loader2, Plus } from "lucide-react"
+import { CurriculumSelectorModal } from "@/components/curriculum-selector-modal"
 
 export function RecommendedVideos() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [videos, setVideos] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [selectedVideoForModal, setSelectedVideoForModal] = useState<any>(null)
 
   useEffect(() => {
     async function fetchRecommendations() {
@@ -38,8 +40,9 @@ export function RecommendedVideos() {
   }
 
   return (
-    <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-      <div className="flex items-center justify-between mb-8">
+    <>
+      <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        <div className="flex items-center justify-between mb-8">
         <div className="flex flex-col">
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <TrendingUp className="w-6 h-6 text-red-500" />
@@ -94,8 +97,18 @@ export function RecommendedVideos() {
                   </div>
                 )}
                 {/* Play Overlay */}
-                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/card:opacity-100 transition-opacity flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/card:opacity-100 transition-opacity flex flex-col items-center justify-center gap-4">
                    <PlayCircle className="w-12 h-12 text-white opacity-90 drop-shadow-lg" />
+                   <Button 
+                     size="sm" 
+                     className="bg-primary hover:bg-primary/90 text-primary-foreground transform translate-y-4 group-hover/card:translate-y-0 opacity-0 group-hover/card:opacity-100 transition-all shadow-lg"
+                     onClick={(e) => {
+                       e.stopPropagation()
+                       setSelectedVideoForModal(video)
+                     }}
+                   >
+                     <Plus className="w-4 h-4 mr-1" /> 내 커리큘럼에 담기
+                   </Button>
                 </div>
               </div>
               <CardContent className="p-4">
@@ -137,5 +150,12 @@ export function RecommendedVideos() {
         )}
       </div>
     </section>
+      
+      <CurriculumSelectorModal 
+        isOpen={!!selectedVideoForModal}
+        onClose={() => setSelectedVideoForModal(null)}
+        videoData={selectedVideoForModal}
+      />
+    </>
   )
 }
