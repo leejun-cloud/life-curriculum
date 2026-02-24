@@ -71,10 +71,10 @@ export function RecommendedVideos() {
         ) : (
           <div 
             ref={scrollRef}
-            className="flex overflow-x-auto gap-6 pb-6 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            className="grid grid-rows-2 grid-flow-col gap-4 pb-6 overflow-x-auto snap-x snap-mandatory auto-cols-[85vw] sm:auto-cols-[320px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
           >
             {videos.map((video) => (
-            <Card key={video.id} className="min-w-[280px] sm:min-w-[320px] max-w-[320px] flex-shrink-0 snap-start bg-card/50 hover:bg-card border-transparent hover:border-primary/20 transition-all cursor-pointer overflow-hidden group/card shadow-sm hover:shadow-md">
+            <Card key={video.id} className="snap-start bg-card/50 hover:bg-card border-transparent hover:border-primary/20 transition-all cursor-pointer overflow-hidden group/card shadow-sm hover:shadow-md">
               <div className="relative aspect-video overflow-hidden">
                 <img 
                   src={video.thumbnail} 

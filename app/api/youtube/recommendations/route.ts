@@ -68,7 +68,7 @@ export async function GET() {
           q: topic,
           type: ['video'],
           order: 'viewCount', // Get most viewed
-          maxResults: 5,
+          maxResults: 10,
           publishedAfter: publishedAfter,
           regionCode: 'KR', // Korea
           relevanceLanguage: 'ko'
@@ -132,7 +132,7 @@ export async function GET() {
          const scoreB = b.rawViews + (b.rawComments * 10)
          return scoreB - scoreA
       })
-      .slice(0, 10) // Keep top 10
+      .slice(0, 16) // Keep top 16 for 2 rows
 
     // 3. Save to Firestore Cache
     try {
